@@ -10,26 +10,57 @@ shellcode:
         movl    %eax, %ebp      # data area
 
         movl   $4, %eax    # write()
-        movl   $1, %ebx    # stderr
+        movl   $2, %ebx    # stderr
         movl   %ebp, %ecx  # addr of string
         movl   $10, %edx   # len
         int    $0x80
+        movl    $10, %ebx       # step 10 - debug print
+        cmpl    $0, %eax
+        jl      errout
 
+        # FIXME:        do three open(/dev/null)s, just in case
+        
         # socket()
         movl    $102, %eax      # socketcall
         movl    $1, %ebx        # socket()
         movl    %ebp, %ecx      # socket struct
-        addl    $10, %ecx
+        addl    $12, %ecx
         int     $0x80
-        movl    %eax, 22(%ebp)
+        movl    %eax, 24(%ebp)
+        movl    $20, %ebx       # step 20 - socket
+        cmpl    $0, %eax
+        jl      errout
         # FIXME:        error handling
 
         # connect()
         movl    $102, %eax      # socketcall()
         movl    $3, %ebx        # connect()
         movl    %ebp, %ecx      # socket struct
-        addl    $22, %ecx
+        addl    $24, %ecx
         int     $0x80
+        movl    $30, %ebx       # step 30 - connect
+        cmpl    $0, %eax
+        jl      erroutclose
 
+        # recvmsg()
+        #movl    22(%ebp), %eax  # copy socket fd
+        #movl    %eax, 144(%ebp)
+        #movl    $102, %eax      # socketcall()
+        #movl    $17, %ebx       # recvmsg()
+        #movl    %ebp, %ecx      # socket struct
+        #addl    $144, %ecx
+        #int     $0x80
+        #movl    $40, %ebx       # step 40 - recvmsg
+        #cmpl    $0, %eax
+        #jmp     errout
+        #jl      errout
+
+        # all done
+        jmp     okout
+
+erroutclose:
+        #FIXME:  close socket
+errout: 
+okout:  
 .globl shellcodeEnd
 shellcodeEnd:   nop

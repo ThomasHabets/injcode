@@ -1,14 +1,12 @@
 #include <unistd.h>
- #include <sys/types.h>
-       #include <sys/socket.h>
-       #include <stdlib.h>
-       #include <stdio.h>
-       #include <errno.h>
-  #include <sys/socket.h>
-       #include <sys/un.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
-
-#if 1
 int
 send_fds(int sd)
 {
@@ -40,53 +38,6 @@ send_fds(int sd)
         sendmsg(sd, &msg, 0);
         return 0;
 }
-#endif
-
-#if 0
-int
-send_fd(int sd, int fd)
-{
-        struct msghdr msg;
-        struct cmsghdr *cmsg;
-        struct iovec iov[1];
-        char buf[1];
-        int cmsg_size;
-        
-        iov[0].iov_base = buf;
-        iov[0].iov_len = 1;
-        
-        msg.msg_iov = iov;
-        msg.msg_iovlen = 1;
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        
-        cmsg_size = sizeof(struct cmsghdr)+sizeof(int);
-        cmsg_size = CMSG_LEN(sizeof(int));
-        
-        if ( (cmsg = (struct cmsghdr*)malloc(cmsg_size)) == NULL ) {
-                fprintf(stderr, "send_fd malloc cmsghdr error[%s]",
-                        strerror(errno));
-                return -1;
-        }
-
-        cmsg->cmsg_len = cmsg_size;
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_RIGHTS;
-        *(int *)CMSG_DATA(cmsg) = fd;
-        
-        
-        msg.msg_control = (caddr_t)cmsg;
-        msg.msg_controllen = cmsg_size;
-        //msg.msg_flags = 0;
-        if ( sendmsg(sd, &msg, 0) != 1 )          {
-                fprintf(stderr, "send_fd sendmsg to sd[] error[%s]\n",
-                        strerror(errno));
-                return -1;
-        }
-        
-        return 0;
-}
-#endif
 
 int recv_fds(int sd)
 {
@@ -118,43 +69,6 @@ int recv_fds(int sd)
         dup2(file_descriptors[2], STDERR_FILENO);
         close(file_descriptors[2]);
 }
-int
-recv_fd(int sd)
-{
-        struct msghdr msg;
-        struct cmsghdr *cmsg;
-        struct iovec iov[1];
-        char buf[32];
-        int cmsg_size;
-        iov[0].iov_base = buf;
-        iov[0].iov_len = sizeof(buf);
-        
-        msg.msg_iov = iov;
-        msg.msg_iovlen = 1;
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        
-        cmsg_size = sizeof(struct cmsghdr)+sizeof(int);
-        cmsg_size = CMSG_LEN(sizeof(int));
-        
-        if ( (cmsg = (struct cmsghdr*)malloc(cmsg_size)) == NULL )
-                return -1;
-
-        cmsg->cmsg_len = cmsg_size;
-        cmsg->cmsg_level = SOL_SOCKET;
-        cmsg->cmsg_type = SCM_RIGHTS;
-        msg.msg_control = (caddr_t)cmsg;
-        msg.msg_controllen = cmsg_size;
-        fprintf(stderr, "C> about to recvmsg\n");
-        if (0 >= recvmsg(sd, &msg, 0)) {
-                perror("recvmsg");
-                //return -2;
-        }
-        fprintf(stderr, "C> done recvmsg\n");
-
-        return *(int *)CMSG_DATA(cmsg);
-}
-
 
 
 int
@@ -175,6 +89,8 @@ main()
 {
         int pid = fork();
         int fds[2];
+        printf("%d\n", CMSG_SPACE(12));
+        return;
         socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
         //pipe(fds);
         if (pid) {
