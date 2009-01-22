@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <time.h>
 
 
 struct user_regs_struct {
@@ -269,13 +270,15 @@ main(int argc, char **argv)
         }
 
         // run
+        time_t last = 0;
         do {
                 if ((err = ptrace(PTRACE_CONT, pid, NULL, NULL))) {
                         perror("PTRACE_CONT");
                 }
                 int status;
                 waitpid(pid, &status, 0);
-                if (0) {
+                if (last != time(0)) {
+                        last = time(0);
                         fprintf(stderr, "waitpid status: %d %d %d %d\n",
                                 WIFEXITED(status),
                                 WIFSIGNALED(status),
@@ -310,6 +313,7 @@ main(int argc, char **argv)
         printf("%%ebp : 0x%.8lx\n", newregs.ebp);
         printf("%%eip : 0x%.8lx\n", newregs.eip);
         printf("%%esp : 0x%.8lx\n", newregs.esp);
+        dumpregs(&newregs);
         
         // restore
         poke(olddatapage, oldregs.esp & ~(pagesize-1), pagesize);

