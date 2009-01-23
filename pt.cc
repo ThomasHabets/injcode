@@ -142,6 +142,20 @@ send_fds(int sd, int proxyfd)
 }
 
 void
+dumpWaitStatus(int status)
+{
+        if (WIFEXITED(status)) {
+                printf("exited: %d\n", WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+                printf("signaled: %d\n", WTERMSIG(status));
+        } else if (WIFSTOPPED(status)) {
+                printf("stopped: %d\n", WSTOPSIG(status));
+        } else if (WIFCONTINUED(status)) {
+                printf("cont\n");
+        }
+}
+
+void
 finalWait()
 {
         int status;
@@ -428,7 +442,7 @@ main(int argc, char **argv)
 		perror("getregs");
         }
         if ((err = ptrace(PTRACE_CONT, pid, NULL, NULL))) {
-		perror("getregs");
+		perror("cont");
         }
 
         fprintf(f, "-------\n");fflush(f);
@@ -473,6 +487,14 @@ main(int argc, char **argv)
                                );
                 }
 
+                int status;
+                if (0 < waitpid(pid, &status, WNOHANG)) {
+                        dumpWaitStatus(status);
+                        if ((err = ptrace(PTRACE_CONT, pid, NULL, SIGINT))) {
+                                perror("cont");
+                        }
+                        break;
+                }
                 if ((fdsi[0].revents & POLLIN) &&(fdso[2].revents & POLLOUT)) {
                         //printf("Write from 0 to 2\n");
                         copyFd(fdsi[0].fd, fdso[2].fd);
@@ -486,10 +508,10 @@ main(int argc, char **argv)
                         //printf("Write from 2 to 0\n");
                         copyFd(fdsi[2].fd, fdso[0].fd);
                 }
-                printf("wait %d\n", waitpid(childpid, NULL, WNOHANG));
 
         }
 
+        waitpid(childpid, NULL,0);
 
         finalWait();
 }
