@@ -26,7 +26,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include<errno.h>
+#include <errno.h>
+#include <poll.h>
+#include <pty.h>  /* for openpty and forkpty */
+#include <utmp.h> /* for login_tty */
 
 
 struct user_regs_struct {
@@ -38,7 +41,7 @@ struct user_regs_struct {
         long eflags, esp;
         unsigned short ss, __ss;
 };
-        FILE *f;
+FILE *f;
 
 void
 dumpregs(struct user_regs_struct *regs)
@@ -58,11 +61,12 @@ dumpregs(struct user_regs_struct *regs)
 }
 
 int pid;
-const int wordsize = 4;
+const unsigned int wordsize = 4;
 const int pagesize = 4096;
 typedef unsigned long word_t;
 extern "C" char* shellcode();
 extern "C" char* shellcodeEnd();
+extern "C" char* shellcodeChild();
 
 void
 peekpoke(const char *data, unsigned long addr, size_t len, bool poke)
@@ -106,9 +110,11 @@ poke(const char *data, unsigned long addr, size_t len)
 }
 
 int
-send_fds(int sd)
+send_fds(int sd, int proxyfd)
 {
-        int fds[3] = {0,1,2};
+        int fds[3] = { proxyfd,
+                       proxyfd,
+                       proxyfd };
         char buf[CMSG_SPACE(sizeof fds)];
 
         struct msghdr msg;
@@ -154,7 +160,7 @@ finalWait()
 }
 
 void
-child()
+child(int proxyfd)
 {
         int server_socket = socket(PF_UNIX, SOCK_STREAM, 0);
 
@@ -171,7 +177,7 @@ child()
                                        &client_address_length);
         close(server_socket);
         fprintf(stderr, "P> connected, sending...\n");
-        send_fds(client_connection);
+        send_fds(client_connection, proxyfd);
         fprintf(stderr, "P> all done\n");
         exit(0);
 }
@@ -179,11 +185,19 @@ child()
 int
 main(int argc, char **argv)
 {
+        int proxyfdm, proxyfds;
+        if (0 > openpty(&proxyfdm, &proxyfds, NULL, NULL, NULL)) {
+                perror("openpty()");
+                return 1;
+        }
+
         int childpid = fork();
         if (!childpid) {
-                child();
+                close(proxyfdm);
+                child(proxyfds);
                 return 0;
         }
+        close(proxyfds);
         sleep(1);
         int err;
         pid = atoi(argv[1]);
@@ -191,10 +205,13 @@ main(int argc, char **argv)
         if (!(f = fopen("lala.log", "a+"))) {
                 perror("fopen()");
         }
-        fprintf(f, "setsid(): %d\n", setsid());
-        fprintf(f, "TIOCNOTTY: %d %s\n", ioctl(0, TIOCNOTTY, NULL),
-               strerror(errno));
-        fflush(f);
+        f = stdout;
+        if (0) {
+                fprintf(f, "setsid(): %d\n", setsid());
+                fprintf(f, "TIOCNOTTY: %d %s\n", ioctl(0, TIOCNOTTY, NULL),
+                        strerror(errno));
+                fflush(f);
+        }
 
 
         word_t codebase;
@@ -299,6 +316,17 @@ main(int argc, char **argv)
         }
         fflush(f);
 
+        // symbols
+        if (1) {
+                *(word_t*)&newdatapage[224] = codebase
+                        + ((word_t)shellcodeChild-(word_t)shellcode);
+        }
+
+        // setup registers
+        if ((err = ptrace(PTRACE_GETREGS, pid, NULL,
+                          &newregs))) {
+                perror("getregs");
+        }
         newcodepage[pagesize-1] = 0xcc;
         poke(newdatapage, database, pagesize);
         poke(newcodepage, codebase, pagesize);
@@ -317,7 +345,7 @@ main(int argc, char **argv)
                 }
                 int status;
                 waitpid(pid, &status, 0);
-                if (last != time(0)) {
+                if (0 || last != time(0)) {
                         last = time(0);
                         fprintf(f, "waitpid status: %d %d %d %d\n",
                                 WIFEXITED(status),
@@ -329,28 +357,32 @@ main(int argc, char **argv)
                                         WSTOPSIG(status));
                         }
                         fflush(f);
+
+                        if ((err = ptrace(PTRACE_GETREGS, pid, NULL,
+                                          &newregs))) {
+                                perror("getregs");
+                        }
+                        dumpregs(&newregs);
+                        printf("%p .. %p .. %p\n",
+                               (void*)codebase,
+                               (void*)newregs.eip,
+                               (void*)(codebase + pagesize)
+                               );
                 }
 
                 if ((err = ptrace(PTRACE_GETREGS, pid, NULL, &newregs))) {
                         perror("getregs");
                 }
-                if (0) {
-                        dumpregs(&newregs);
-                        printf("%p .. %p .. %p\n",
-                               codebase,
-                               newregs.eip,
-                               codebase + pagesize
-                               );
-                }
-        } while(newregs.eip != codebase  + pagesize);
+        } while(newregs.eip != (long)(codebase  + pagesize));
 
         // print status
         fprintf(f,"Done\n");
         if ((err = ptrace(PTRACE_GETREGS, pid, NULL, &newregs))) {
 		perror("getregs");
         }
-        fprintf(f,"%%eax : %d %s\n", newregs.eax, strerror(-newregs.eax));
-        fprintf(f,"%%ebx : step %d\n", newregs.ebx);
+        fprintf(f,"%%eax : %d %s\n", (int)newregs.eax,
+                strerror(-newregs.eax));
+        fprintf(f,"%%ebx : step %d\n", (int)newregs.ebx);
         fprintf(f,"%%ebp : 0x%.8lx\n", newregs.ebp);
         fprintf(f,"%%eip : 0x%.8lx\n", newregs.eip);
         fprintf(f,"%%esp : 0x%.8lx\n", newregs.esp);
@@ -369,14 +401,26 @@ main(int argc, char **argv)
         fprintf(f, "-------\n");fflush(f);
 
         ptrace(PTRACE_DETACH, pid, NULL, NULL);
-        waitpid(childpid, NULL,0);
-        printf("About to close everything...\n");
-        fprintf(f, "about to close all\n"); fflush(f);
 
-        close(0);
-        close(1);
-        close(2);
-        fprintf(f, "closed all\n");fflush(f);
+        for(;;) {
+                struct pollfd fds[2];
+                int nfds;
+                fds[0].fd = proxyfdm;
+                fds[0].events = POLLIN;
+                nfds = poll(fds, nfds, -1);
+                if (nfds) {
+                        char buf[128];
+                        int n;
+
+                        if (0 > (n = read(fds[0].fd, buf, sizeof(buf)))) {
+                                perror("read(proxyfdm)");
+                        } else {
+                                write(2, buf, n);
+                        }
+                }
+        }
+
+        waitpid(childpid, NULL,0);
+
         finalWait();
-        fprintf(f, "wait done\n");fflush(f);
 }

@@ -9,3 +9,5 @@ pos size  descr
 196  24   cmsg buffer
           196=18, 200=1, 204=1, 208=4, 212=5, 216=6
 220   4   scratch ("ping")
+224   4   child func ptr
+228   4   child pid

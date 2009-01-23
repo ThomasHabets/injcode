@@ -1,14 +1,16 @@
-# toscreen/shellcode-linux-ia32.S
+/* toscreen/shellcode-linux-ia32.S
 #
 # Copyright(c) Thomas Habets 2009
 #
-# http:  //foosec.pl/pub/info/syscalls_linux_2_2.html
-# dup2=63, read=3, write=4, close=6
-#
+# http://foosec.pl/pub/info/syscalls_linux_2_2.html
+# dup2=63, read=3, write=4, close=6, fork=2
+*/
+        .equ    SYS_waitpid,     7
+        .equ    SYS_setpgid,     57
         .text
 .globl shellcode
 shellcode:
-        movl    %eax, %ebp      # data area
+        movl    %eax, %ebp      # database
 
         movl   $4, %eax    # write()
         movl   $2, %ebx    # stderr
@@ -19,6 +21,41 @@ shellcode:
         cmpl    $0, %eax
         jl      errout
 
+        # fork()
+        movl    $2, %eax
+        int     $0x80
+        cmpl    $0, %eax
+        jne     parent
+        jl      errout
+        movl    224(%ebp), %eax
+        jmp     *%eax
+parent:
+        movl    %eax, 228(%ebp)
+
+        # setpgid()
+setpgid:        
+        movl    %eax, %ecx
+        movl    $SYS_setpgid, %eax
+        movl    $0, %ebx
+        int     $0x80
+        movl    $15, %ebx       # step 15
+        cmpl    $0, %eax
+        jl      setpgid
+
+        # setsid()
+        movl    $66, %eax
+        int     $0x80
+        movl    $73, %ebx       # step 73
+        cmpl    $0, %eax
+        jl      erroutclose
+        
+        # waitpid()
+        movl    %eax, %ebx
+        movl    $SYS_waitpid, %eax
+        movl    %ebp, %ecx
+        movl    $0, %edx
+        int     $0x80
+                
         # FIXME:        do three open(/dev/null)s, just in case
         
         # socket()
@@ -92,13 +129,6 @@ shellcode:
         cmpl    $0, %eax
         jl      erroutclose
 
-        # setsid()
-        #movl    $66, %eax
-        #int     $0x80
-        #movl    $73, %ebx       # step 73
-        #cmpl    $0, %eax
-        #jl      erroutclose
-
         # ioctl(fd, TIOCTTY, 1)
         movl    $54, %eax
         movl    $0, %ebx         # fd
@@ -145,6 +175,18 @@ shellcode:
         # all done
         jmp     okout
 
+.globl  shellcodeChild
+shellcodeChild:
+        # setpgid()
+        movl    $SYS_setpgid, %eax
+        movl    $0, %ebx
+        movl    $0, %ecx
+        int     $0x80
+
+        # FIXME sleep(10)
+        jmp     shellcodeChild
+        # exit(0)
+        
 erroutclose:
         #FIXME:  close socket
 errout: 
