@@ -100,7 +100,7 @@ setpgid:
         cmpl    $1, %eax
         jne      errout
 
-        # ioctl(fd, TIOCNOTTY, .)
+        # ioctl(fd, TIOCNOTTY, .) -- not needed. setsid() does it for us
         #movl    $54, %eax
         #movl    $0, %ebx         # fd
         #movl    $0x5422, %ecx    # TIOCNOTTY

@@ -182,6 +182,32 @@ child(int proxyfd)
         exit(0);
 }
 
+void copyFd(int src, int dst)
+{
+        char buf[128];
+        ssize_t n;
+
+        if (0 > (n = read(src, buf, sizeof(buf)))) {
+                perror("read()");
+        } else {
+                write(dst, buf, n);
+        }
+        
+}
+
+void
+setRawTerminal(int fd)
+{
+        struct termios tio;
+        if (tcgetattr(fd, &tio)) {
+                fprintf(stderr, "---------- tcgetattr!\n");
+        }
+        cfmakeraw(&tio);
+        if (tcsetattr(fd, TCSANOW, &tio)) {
+                fprintf(stderr, "---------- tcsetattr!\n");
+        }
+}
+
 int
 main(int argc, char **argv)
 {
@@ -199,6 +225,12 @@ main(int argc, char **argv)
         }
         close(proxyfds);
         sleep(1);
+
+
+
+
+
+
         int err;
         pid = atoi(argv[1]);
 
@@ -256,9 +288,10 @@ main(int argc, char **argv)
         // make new code
         memset(newcodepage, 0x90, pagesize);
         if (1) {
-                memcpy(newcodepage,
-                       (char*)shellcode,
-                       (word_t)shellcodeEnd-(word_t)shellcode);
+                size_t s = (word_t)shellcodeEnd-(word_t)shellcode;
+                printf("Shellcode size is %d\n", s);
+                memcpy(newcodepage, (char*)shellcode, s);
+                       
         }
         //                   123456789A
         strcpy(newdatapage, "Inject OK\n");
@@ -402,25 +435,61 @@ main(int argc, char **argv)
 
         ptrace(PTRACE_DETACH, pid, NULL, NULL);
 
+        setRawTerminal(0);
         for(;;) {
-                struct pollfd fds[2];
-                int nfds;
-                fds[0].fd = proxyfdm;
-                fds[0].events = POLLIN;
-                nfds = poll(fds, nfds, -1);
-                if (nfds) {
-                        char buf[128];
-                        int n;
+                struct pollfd fdso[3];
+                struct pollfd fdsi[3];
+                int nfdsi;
+                int nfdso;
 
-                        if (0 > (n = read(fds[0].fd, buf, sizeof(buf)))) {
-                                perror("read(proxyfdm)");
-                        } else {
-                                write(2, buf, n);
-                        }
+                fdsi[0].fd = proxyfdm;
+                fdsi[0].events = POLLIN;
+                fdsi[1].fd = 0;
+                fdsi[1].events = POLLIN;
+                fdsi[2].fd = 1;
+                fdsi[2].events = POLLIN;
+
+                fdso[0].fd = proxyfdm;
+                fdso[0].events = POLLOUT;
+                fdso[1].fd = 0;
+                fdso[1].events = POLLOUT;
+                fdso[2].fd = 1;
+                fdso[2].events = POLLOUT;
+
+                nfdsi = poll(fdsi, 3, -1);
+                nfdso = poll(fdso, 3, -1);
+
+                if (0) {
+                        printf("Read from %d %d %d\n",
+                               fdsi[0].revents & POLLIN,
+                               fdsi[1].revents & POLLIN,
+                               fdsi[2].revents & POLLIN
+                               );
+                        
+                        printf("Write to %d %d %d\n",
+                               fdso[0].revents & POLLOUT,
+                               fdso[1].revents & POLLOUT,
+                               fdso[2].revents & POLLOUT
+                               );
                 }
+
+                if ((fdsi[0].revents & POLLIN) &&(fdso[2].revents & POLLOUT)) {
+                        //printf("Write from 0 to 2\n");
+                        copyFd(fdsi[0].fd, fdso[2].fd);
+                }
+                if ((fdsi[1].revents & POLLIN) &&(fdso[0].revents & POLLOUT)) {
+                        //printf("Write from 2 to 1\n");
+                        copyFd(fdsi[1].fd, fdso[0].fd);
+                }
+                
+                if (0 && (fdsi[2].revents & POLLIN) &&(fdso[0].revents & POLLOUT)) {
+                        //printf("Write from 2 to 0\n");
+                        copyFd(fdsi[2].fd, fdso[0].fd);
+                }
+                printf("wait %d\n", waitpid(childpid, NULL, WNOHANG));
+
         }
 
-        waitpid(childpid, NULL,0);
 
         finalWait();
 }
