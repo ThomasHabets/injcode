@@ -22,8 +22,8 @@ static int proxyfdm, proxyfds;
 static pid_t childpid;
 static struct termios orig_tio;
 
-static int
-send_fds(int sd, int proxyfd)
+int
+Retty::send_fds(int sd, int proxyfd)
 {
         int fds[3] = { proxyfd,
                        proxyfd,
@@ -52,14 +52,14 @@ send_fds(int sd, int proxyfd)
         msg.msg_iovlen = 1;
         
         if (0 > sendmsg(sd, &msg, 0)) {
-                fprintf(stderr, "P> sendmsg(%d, %p) %s\n",
+                fprintf(stderr, "RettyChild> sendmsg(%d, %p) %s\n",
                         sd, &msg, strerror(errno));
         }
         return 0;
 }
 
-static void
-child(int proxyfd)
+void
+Retty::child(int proxyfd)
 {
         int server_socket = socket(PF_UNIX, SOCK_STREAM, 0);
 
@@ -67,31 +67,38 @@ child(int proxyfd)
                                               "\0init_console" };
         if (bind(server_socket, (struct sockaddr *) &server_address,
                  sizeof server_address)) {
-                fprintf(stderr, "P> bind() error %s\n", strerror(errno));
+                fprintf(stderr, "RettyChild> bind() error %s\n", strerror(errno));
         }
         if (listen(server_socket, 1)) {
-                fprintf(stderr, "P> listen() error %s\n", strerror(errno));
+                fprintf(stderr, "RettyChild> listen() error %s\n", strerror(errno));
         }
         
         struct sockaddr_un client_address;
         socklen_t client_address_length = sizeof client_address;
-        fprintf(stderr, "P> waiting for inject code to connect...\n");
+        if (options.verbose) {
+                printf("RettyChild> waiting for inject code to connect...\n");
+        }
         int cli = accept(server_socket,
                          (struct sockaddr*)&client_address,
                          &client_address_length);
         if (0 > cli) {
-                fprintf(stderr, "P> accept() error %s\n", strerror(errno));
+                fprintf(stderr, "RettyChild> accept() error %s\n",
+                        strerror(errno));
         }
         close(server_socket);
-        fprintf(stderr, "P> connected, sending...\n");
+        if (options.verbose) {
+                printf("RettyChild> connected, sending...\n");
+        }
         send_fds(cli, proxyfd);
-        fprintf(stderr, "P> all done\n");
-        sleep(3);
+        if (options.verbose) {
+                printf("RettyChild> all done\n");
+        }
+        //sleep(3);
         exit(0);
 }
 
-static std::string
-readFd(int fd)
+std::string
+Retty::readFd(int fd)
 {
         char buf[128];
         ssize_t n;
@@ -107,8 +114,8 @@ readFd(int fd)
         return std::string(buf, &buf[n]);
 }
 
-static void
-setRawTerminal(int fd)
+void
+Retty::setRawTerminal(int fd)
 {
         struct termios tio;
         if (tcgetattr(fd, &tio)) {
@@ -121,8 +128,8 @@ setRawTerminal(int fd)
 }
 
 
-static void
-setupPty()
+void
+Retty::setupPty()
 {
         struct winsize ws;
         if (0 > tcgetattr(0, &orig_tio)) {
@@ -156,8 +163,8 @@ setupPty()
         sleep(1);
 }
 
-void
-rettySetup(Inject &injector)
+Retty::Retty(Inject &injector)
+        :InjMod(injector)
 {
         setupPty();
 
@@ -242,14 +249,16 @@ rettySetup(Inject &injector)
 
         size_t s = (Inject::ptr_t)shellcodeRettyEnd
                 - (Inject::ptr_t)shellcodeRetty;
-        printf("Shellcode size is %d\n", s);
+        if (options.verbose) {
+                printf("Shellcode size is %d\n", s);
+        }
         memcpy(code, (char*)shellcodeRetty, s);
 
         injector.inject(code, data);
 }
 
 void
-rettyRun()
+Retty::run()
 {
         setRawTerminal(0);
         std::string to0, to1, to2;

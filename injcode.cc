@@ -16,11 +16,11 @@ void
 pt2()
 {
         Inject injector(options.targetpid);
-        rettySetup(injector);
+        options.module.reset(new Retty(injector));
         injector.run();
-        injector.dumpregs();
+        injector.dumpregs(options.verbose < 2);
         injector.detach();
-        rettyRun();
+        options.module->run();
 }
 
 int
@@ -29,7 +29,7 @@ main(int argc, char **argv)
         struct termios orig_tio;
         // option parsing
         options.targetpid = atoi(argv[1]);
-        options.verbose = 1;
+        options.verbose = 0;
         options.shellcodeName = "test";
         
         // 

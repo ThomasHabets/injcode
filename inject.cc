@@ -1,8 +1,8 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <sys/ptrace.h>
- #include <sys/types.h>
-       #include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 
 #include "inject.h"
@@ -113,7 +113,7 @@ Inject::dataBase()
 void
 Inject::inject(void *code, void *data)
 {
-        printf("Injecting...\n");
+        //printf("Injecting...\n");
         uninject();
 
         injected = true;
@@ -163,6 +163,7 @@ Inject::run()
                                 WIFSTOPPED(status),
                                 WIFCONTINUED(status));
                         if (WIFSTOPPED(status)) {
+                                // FIXME: save signal and deliver later
                                 printf("Stopping signal: %d\n",
                                         WSTOPSIG(status));
                         }
@@ -172,10 +173,12 @@ Inject::run()
                                 perror("getregs");
                         }
                         //dumpregs(&newregs);
-                        printf("%p .. %p .. %p\n",
-                               codeBase(),
-                               (void*)regs.eip,
-                               codeBase() + pageSize());
+                        if (0) {
+                                printf("%p .. %p .. %p\n",
+                                       codeBase(),
+                                       (void*)regs.eip,
+                                       codeBase() + pageSize());
+                        }
                 }
 
                 if (ptrace(PTRACE_GETREGS, pid, NULL, &regs)) {
@@ -188,7 +191,7 @@ void
 Inject::uninject()
 {
         if (injected) {
-                printf("UnInjecting...\n");
+                //printf("UnInjecting...\n");
                 poke(&olddatapage[0], dataBase(), pageSize());
                 poke(&oldcodepage[0], codeBase(), pageSize());
                 if (ptrace(PTRACE_SETREGS, pid, NULL, &oldregs)) {
@@ -201,11 +204,14 @@ Inject::uninject()
 }
 
 void
-Inject::dumpregs()
+Inject::dumpregs(bool onlyIfEAX)
 {
         struct user_regs_struct regs;
         if (ptrace(PTRACE_GETREGS, pid, NULL, &regs)) {
                 perror("getregs");
+        }
+        if (onlyIfEAX && !regs.eax) {
+                return;
         }
         printf("----------------------------\n");
         printf("%%eip : 0x%.8lx  %d\n", regs.eip);

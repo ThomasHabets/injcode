@@ -51,7 +51,7 @@ public:
         ptr_t codeBase();
         ptr_t dataBase();
         void run();
-        void dumpregs();
+        void dumpregs(bool onlyIfEAX=false);
         int pageSize() { attach(); return pagesize; }
         int wordSize() { return sizeof(ptr_t); }
 
