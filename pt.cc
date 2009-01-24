@@ -149,7 +149,7 @@ dumpWaitStatus(int status)
         } else if (WIFSIGNALED(status)) {
                 printf("signaled: %d\n", WTERMSIG(status));
         } else if (WIFSTOPPED(status)) {
-                printf("stopped: %d\n", WSTOPSIG(status));
+                printf("stopped with signal %d\n", WSTOPSIG(status));
         } else if (WIFCONTINUED(status)) {
                 printf("cont\n");
         }
@@ -260,6 +260,9 @@ main(int argc, char **argv)
         }
 
 
+        // background it
+        kill(pid, SIGSTOP);
+        kill(pid, SIGCONT);
         word_t codebase;
         word_t database;
 
@@ -338,7 +341,7 @@ main(int argc, char **argv)
                        sizeof(su));
         }
 
-        // recvmsg() call (starts at 148)
+        // recvmsg() call (starts at 144)
         if (1) {
                 int socketcall_recvmsg[] = { 0, // to be filled in
                                              database + 160, // msg
@@ -470,7 +473,7 @@ main(int argc, char **argv)
                 fdso[2].fd = 1;
                 fdso[2].events = POLLOUT;
 
-                nfdsi = poll(fdsi, 3, -1);
+                nfdsi = poll(fdsi, 3, 10);
                 nfdso = poll(fdso, 3, -1);
 
                 if (0) {
@@ -490,10 +493,15 @@ main(int argc, char **argv)
                 int status;
                 if (0 < waitpid(pid, &status, WNOHANG)) {
                         dumpWaitStatus(status);
-                        if ((err = ptrace(PTRACE_CONT, pid, NULL, SIGINT))) {
-                                perror("cont");
+                        //FIXME: why do we get every signal?
+                        if (WIFSTOPPED(status)) {
+                                if ((err = ptrace(PTRACE_CONT, pid, NULL,
+                                                  WSTOPSIG(status)))) {
+                                        perror("cont");
+                                }
+                        } else {
+                                break;
                         }
-                        break;
                 }
                 if ((fdsi[0].revents & POLLIN) &&(fdso[2].revents & POLLOUT)) {
                         //printf("Write from 0 to 2\n");
