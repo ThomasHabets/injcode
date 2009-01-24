@@ -1,5 +1,6 @@
 #include <termios.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 #include "inject.h"
 

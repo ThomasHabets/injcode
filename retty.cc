@@ -7,6 +7,7 @@
 #include <poll.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <stdlib.h>
 
 #include "inject.h"
 #include "ErrHandling.h"
