@@ -21,8 +21,10 @@
         .equ    SC_recvmsg,     17
 
         .equ    SYS_ioctl,      54
-        .equ    IOCTL_TIOCSCTTY,0x540E
-        .equ    IOCTL_TIOCNOTTY,0x5422
+        .equ    TIOCSCTTY,      0x540E
+        .equ    TIOCNOTTY,      0x5422
+        .equ    TCGETS,         0x5401
+        .equ    TCSETS,         0x5402
         
         .equ    teststr,        0
         .equ    socketstruct,   12
@@ -37,6 +39,8 @@
         .equ    fd2,            216
         .equ    childfunc,      224
         .equ    childpid,       228
+        .equ    oldtio,         232 /* size 60 */
+        
 
         .text
         
@@ -44,6 +48,7 @@
 shellcode:
         movl    %eax, %ebp      # database
 
+        # Debug print
         #movl   $SYS_write, %eax
         #movl   $2, %ebx    # stderr
         #leal   teststr(%ebp), %ecx
@@ -53,13 +58,23 @@ shellcode:
         #cmpl    $0, %eax
         #jl      errout
 
+        # ioctl(0, TCGETS, &oldtio)
+        movl    $SYS_ioctl, %eax
+        movl    $0, %ebx
+        movl    $TCGETS, %ecx
+        leal    oldtio(%ebp), %edx
+        int     $0x80
+        movl    $12, %ebx       # step 12
+        cmpl    $0, %eax
+        jl      errout
+        
         # fork()
         movl    $SYS_fork, %eax
         int     $0x80
         cmpl    $0, %eax
         jne     parent
         jl      errout
-        movl    224(%ebp), %eax
+        movl    childfunc(%ebp), %eax
         jmp     *%eax
 parent:
         movl    %eax, childpid(%ebp)
@@ -130,7 +145,7 @@ setpgid:
         # ioctl(fd, TIOCNOTTY, .) -- not needed. setsid() does it for us
         #movl    $SYS_ioctl, %eax
         #movl    $0, %ebx         # fd
-        #movl    $IOCTL_TIOCNOTTY, %ecx
+        #movl    $TIOCNOTTY, %ecx
         #movl    $0, %edx
         #int     $0x80
         #movl    $45, %ebx       # step 45
@@ -167,12 +182,22 @@ setpgid:
         # ioctl(fd, TIOCTTY, 1)
         movl    $SYS_ioctl, %eax
         movl    $0, %ebx         # fd
-        movl    $IOCTL_TIOCSCTTY, %ecx
+        movl    $TIOCSCTTY, %ecx
         movl    $1, %edx
         int     $0x80
         movl    $75, %ebx       # step 75
         cmpl    $0, %eax
         jne      erroutclose
+
+        # ioctl(0, TCSETS, &oldtio)
+        movl    $SYS_ioctl, %eax
+        movl    $0, %ebx
+        movl    $TCSETS, %ecx
+        leal    oldtio(%ebp), %edx
+        int     $0x80
+        movl    $77, %ebx       # step 77
+        cmpl    $0, %eax
+        jl      errout
 
         # close(socket)
         movl    $SYS_close, %eax
