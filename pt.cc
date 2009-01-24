@@ -118,6 +118,7 @@ send_fds(int sd, int proxyfd)
         char buf[CMSG_SPACE(sizeof fds)];
 
         struct msghdr msg;
+        memset(&msg,0,sizeof(msg));
         msg.msg_control = buf;
         msg.msg_controllen = sizeof(buf);
 
@@ -136,8 +137,11 @@ send_fds(int sd, int proxyfd)
 
         msg.msg_iov = &ping_vec;
         msg.msg_iovlen = 1;
-
-        sendmsg(sd, &msg, 0);
+        
+        if (0 > sendmsg(sd, &msg, 0)) {
+                fprintf(stderr, "P> sendmsg(%d, %p) %s\n",
+                        sd, &msg, strerror(errno));
+        }
         return 0;
 }
 
@@ -162,20 +166,28 @@ child(int proxyfd)
 
         struct sockaddr_un server_address = { AF_UNIX,
                                               "\0init_console" };
-        bind(server_socket, (struct sockaddr *) &server_address,
-             sizeof server_address);
-        listen(server_socket, 1);
+        if (bind(server_socket, (struct sockaddr *) &server_address,
+                 sizeof server_address)) {
+                fprintf(stderr, "P> bind() error %s\n", strerror(errno));
+        }
+        if (listen(server_socket, 1)) {
+                fprintf(stderr, "P> listen() error %s\n", strerror(errno));
+        }
         
         struct sockaddr_un client_address;
         socklen_t client_address_length = sizeof client_address;
         fprintf(stderr, "P> waiting for inject code to connect...\n");
-        int client_connection = accept(server_socket,
-                                       (struct sockaddr*)&client_address,
-                                       &client_address_length);
+        int cli = accept(server_socket,
+                         (struct sockaddr*)&client_address,
+                         &client_address_length);
+        if (0 > cli) {
+                fprintf(stderr, "P> accept() error %s\n", strerror(errno));
+        }
         close(server_socket);
         fprintf(stderr, "P> connected, sending...\n");
-        send_fds(client_connection, proxyfd);
+        send_fds(cli, proxyfd);
         fprintf(stderr, "P> all done\n");
+        sleep(3);
         exit(0);
 }
 
@@ -213,6 +225,7 @@ int
 main(int argc, char **argv)
 {
         int proxyfdm, proxyfds;
+
         if (0 > openpty(&proxyfdm, &proxyfds, NULL, NULL, NULL)) {
                 perror("openpty()");
                 return 1;
@@ -220,12 +233,13 @@ main(int argc, char **argv)
 
         int childpid = fork();
         if (!childpid) {
+                sleep(1);
                 close(proxyfdm);
                 child(proxyfds);
                 return 0;
         }
         close(proxyfds);
-        sleep(1);
+        sleep(2);
 
 
         int err;

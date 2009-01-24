@@ -89,9 +89,7 @@ main()
 {
         int pid = fork();
         int fds[2];
-        printf("%d\n", CMSG_SPACE(12));
-        return;
-        socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+
         //pipe(fds);
         if (pid) {
                 int server_socket = socket(PF_UNIX, SOCK_STREAM, 0);
