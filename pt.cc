@@ -30,7 +30,7 @@
 #include <poll.h>
 #include <pty.h>  /* for openpty and forkpty */
 #include <utmp.h> /* for login_tty */
-
+#include <string>
 
 struct user_regs_struct {
         long ebx, ecx, edx, esi, edi, ebp, eax;
@@ -156,24 +156,6 @@ dumpWaitStatus(int status)
 }
 
 void
-finalWait()
-{
-        int status;
-        fprintf(f, "waiting for pid %d...\n", pid);
-        fprintf(f, "done waiting for pid %d\n", waitpid(pid, &status, 0));
-        if (WIFEXITED(status)) {
-                fprintf(f, "exited: %d\n", WEXITSTATUS(status));
-        } else if (WIFSIGNALED(status)) {
-                fprintf(f, "signaled: %d\n", WTERMSIG(status));
-        } else if (WIFSTOPPED(status)) {
-                fprintf(f, "stopped: %d\n", WSTOPSIG(status));
-        } else if (WIFCONTINUED(status)) {
-                fprintf(f, "cont\n");
-        }
-        fflush(f);
-}
-
-void
 child(int proxyfd)
 {
         int server_socket = socket(PF_UNIX, SOCK_STREAM, 0);
@@ -186,6 +168,7 @@ child(int proxyfd)
         
         struct sockaddr_un client_address;
         socklen_t client_address_length = sizeof client_address;
+        fprintf(stderr, "P> waiting for inject code to connect...\n");
         int client_connection = accept(server_socket,
                                        (struct sockaddr*)&client_address,
                                        &client_address_length);
@@ -196,17 +179,21 @@ child(int proxyfd)
         exit(0);
 }
 
-void copyFd(int src, int dst)
+std::string
+readFd(int fd)
 {
         char buf[128];
         ssize_t n;
 
-        if (0 > (n = read(src, buf, sizeof(buf)))) {
-                perror("read()");
-        } else {
-                write(dst, buf, n);
+        n = read(fd, buf, sizeof(buf));
+        if (!n) {
+                return "";
         }
-        
+        if (0 > n) {
+                perror("read");
+                return "";
+        }
+        return std::string(buf, &buf[n]);
 }
 
 void
@@ -241,24 +228,10 @@ main(int argc, char **argv)
         sleep(1);
 
 
-
-
-
-
         int err;
         pid = atoi(argv[1]);
 
-        if (!(f = fopen("lala.log", "a+"))) {
-                perror("fopen()");
-        }
         f = stdout;
-        if (0) {
-                fprintf(f, "setsid(): %d\n", setsid());
-                fprintf(f, "TIOCNOTTY: %d %s\n", ioctl(0, TIOCNOTTY, NULL),
-                        strerror(errno));
-                fflush(f);
-        }
-
 
         // background it
         kill(pid, SIGSTOP);
@@ -286,6 +259,7 @@ main(int argc, char **argv)
 		perror("attach");
 		exit(1);
 	}
+        kill(pid, SIGCONT); // in case it was reading from terminal at the time
         waitpid(pid, NULL, 0);
 
         // save old
@@ -444,82 +418,79 @@ main(int argc, char **argv)
         if ((err = ptrace(PTRACE_SETREGS, pid, NULL, &oldregs))) {
 		perror("getregs");
         }
-        if ((err = ptrace(PTRACE_CONT, pid, NULL, NULL))) {
-		perror("cont");
+        if ((err = ptrace(PTRACE_DETACH, pid, NULL, NULL))) {
+		perror("detach");
         }
 
-        fprintf(f, "-------\n");fflush(f);
+        printf("Waiting for helper child\n");
+        waitpid(childpid, NULL,0);
+        
+        printf("---attach now to %d----\n", getpid());
+        //        sleep(10);
+        printf("---client is taking over----\n");
 
-        ptrace(PTRACE_DETACH, pid, NULL, NULL);
 
+        struct termios oldtio;
+        tcgetattr(0, &oldtio);
         setRawTerminal(0);
-        for(;;) {
-                struct pollfd fdso[3];
-                struct pollfd fdsi[3];
-                int nfdsi;
-                int nfdso;
+        std::string to0, to1, to2;
+        bool todie = false;
+        while (!todie || !to1.empty() || !to2.empty()) {
+                struct pollfd fds[3];
+                int nfds;
 
-                fdsi[0].fd = proxyfdm;
-                fdsi[0].events = POLLIN;
-                fdsi[1].fd = 0;
-                fdsi[1].events = POLLIN;
-                fdsi[2].fd = 1;
-                fdsi[2].events = POLLIN;
+                
+                fds[0].fd = proxyfdm;
+                fds[0].events = POLLIN;
+                fds[0].revents = 0;
+                fds[1].fd = 0;
+                fds[1].events = POLLIN;
+                fds[1].revents = 0;
+                fds[2].fd = 1;
+                fds[2].events = POLLIN;
+                fds[2].revents = 0;
 
-                fdso[0].fd = proxyfdm;
-                fdso[0].events = POLLOUT;
-                fdso[1].fd = 0;
-                fdso[1].events = POLLOUT;
-                fdso[2].fd = 1;
-                fdso[2].events = POLLOUT;
-
-                nfdsi = poll(fdsi, 3, 10);
-                nfdso = poll(fdso, 3, -1);
-
-                if (0) {
-                        printf("Read from %d %d %d\n",
-                               fdsi[0].revents & POLLIN,
-                               fdsi[1].revents & POLLIN,
-                               fdsi[2].revents & POLLIN
-                               );
-                        
-                        printf("Write to %d %d %d\n",
-                               fdso[0].revents & POLLOUT,
-                               fdso[1].revents & POLLOUT,
-                               fdso[2].revents & POLLOUT
-                               );
+                if (!to0.empty()) {
+                        fds[0].events |= POLLOUT;
+                }
+                if (!to1.empty()) {
+                        fds[1].events |= POLLOUT;
+                }
+                if (!to2.empty()) {
+                        fds[2].events |= POLLOUT;
                 }
 
-                int status;
-                if (0 < waitpid(pid, &status, WNOHANG)) {
-                        dumpWaitStatus(status);
-                        //FIXME: why do we get every signal?
-                        if (WIFSTOPPED(status)) {
-                                if ((err = ptrace(PTRACE_CONT, pid, NULL,
-                                                  WSTOPSIG(status)))) {
-                                        perror("cont");
-                                }
-                        } else {
-                                break;
-                        }
+                nfds = poll(fds, 3, -1);
+
+                if (fds[0].revents & POLLHUP) {
+                        // process died/detached from terminal
+                        //close(proxyfdm);
+                        //proxyfdm = -1;
+                        todie = true;
+                        break;
                 }
-                if ((fdsi[0].revents & POLLIN) &&(fdso[2].revents & POLLOUT)) {
+
+                if (fds[0].revents & POLLIN) {
                         //printf("Write from 0 to 2\n");
-                        copyFd(fdsi[0].fd, fdso[2].fd);
+                        to2 += readFd(fds[0].fd);
                 }
-                if ((fdsi[1].revents & POLLIN) &&(fdso[0].revents & POLLOUT)) {
-                        //printf("Write from 2 to 1\n");
-                        copyFd(fdsi[1].fd, fdso[0].fd);
+                if ((fds[1].revents & POLLIN)) {
+                        //printf("Write from 1 to 0\n");
+                        to0 += readFd(fds[1].fd);
+                }
+                if (!to0.empty() && (fds[0].revents & POLLOUT)) {
+                        write(fds[0].fd, to0.data(), to0.size());
+                        to0 = "";
+                }
+                if (!to1.empty() && (fds[1].revents & POLLOUT)) {
+                        write(fds[1].fd, to1.data(), to1.size());
+                        to1 = "";
+                }
+                if (!to2.empty() && (fds[2].revents & POLLOUT)) {
+                        write(fds[2].fd, to2.data(), to2.size());
+                        to2 = "";
                 }
                 
-                if (0 && (fdsi[2].revents & POLLIN) &&(fdso[0].revents & POLLOUT)) {
-                        //printf("Write from 2 to 0\n");
-                        copyFd(fdsi[2].fd, fdso[0].fd);
-                }
-
         }
-
-        waitpid(childpid, NULL,0);
-
-        finalWait();
+        tcsetattr(0, TCSANOW, &oldtio);
 }
