@@ -4,6 +4,7 @@ all: injcode
 injcode: injcode.o \
 inject.o \
 retty.o \
+testcode.o \
 shellcode-test-linux-ia32.o \
 shellcode-retty-linux-ia32.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lutil

@@ -5,8 +5,8 @@
 extern "C" char* shellcodeTest();
 extern "C" char* shellcodeTestEnd();
 
-void
-setupShellcodeTest(Inject &injector)
+TestModule::TestModule(Inject &injector)
+        :InjMod(injector)
 {
         char data[injector.pageSize()];
         char code[injector.pageSize()];
@@ -17,7 +17,7 @@ setupShellcodeTest(Inject &injector)
 
         size_t s = (Inject::ptr_t)shellcodeTestEnd
                 - (Inject::ptr_t)shellcodeTest;
-        printf("Shellcode size is %d\n", s);
+        //printf("Shellcode size is %d\n", s);
         memcpy(code, (char*)shellcodeTest, s);
         strcpy(data, "Inject OK\n");
 

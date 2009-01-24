@@ -12,6 +12,11 @@ public:
         virtual ~InjMod() {};
 };
 
+class TestModule: public InjMod {
+public:
+        TestModule(Inject&);
+        void run() {};
+};
 class Retty: public InjMod {
         int send_fds(int sd, int proxyfd);
         void child(int proxyfd);
@@ -26,7 +31,7 @@ public:
 typedef struct {
         int targetpid;
         int verbose;
-        std::string shellcodeName;
+        std::string moduleName;
         std::auto_ptr<InjMod> module;
-        //InjMod *module;
+        const char *argv0;
 } options_t;
