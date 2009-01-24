@@ -1,30 +1,60 @@
-/* toscreen/shellcode-linux-ia32.S
-#
-# Copyright(c) Thomas Habets 2009
-#
-# http://foosec.pl/pub/info/syscalls_linux_2_2.html
-# dup2=63, read=3, write=4, close=6, fork=2
-*/
+/** toscreen/shellcode-linux-ia32.S
+ *   
+ *  Copyright(c) Thomas Habets 2009
+ */
+        
+        /*
+        Syscall numbershttp://foosec.pl/pub/info/syscalls_linux_2_2.html
+        */
         .equ    SYS_waitpid,    7
         .equ    SYS_setpgid,    57
         .equ    SYS_kill,       37
-        .equ    childpid,   228
+        .equ    SYS_setsid,     66
+        .equ    SYS_dup2,       63
+        .equ    SYS_read,       3
+        .equ    SYS_write,      4
+        .equ    SYS_close,      6
+        .equ    SYS_fork,       2
+        .equ    SYS_socketcall, 102
+        .equ    SC_socket,      1
+        .equ    SC_connect,     3
+        .equ    SC_recvmsg,     17
+
+        .equ    SYS_ioctl,      54
+        .equ    IOCTL_TIOCSCTTY,0x540E
+        .equ    IOCTL_TIOCNOTTY,0x5422
+        
+        .equ    teststr,        0
+        .equ    socketstruct,   12
+        .equ    socketfd,       24
+        .equ    connectstruct,  24
+        .equ    recvstruct,     144
+        .equ    msghdr,         160
+        .equ    iovec,          188
+        .equ    cmsg,           196
+        .equ    fd0,            208
+        .equ    fd1,            212
+        .equ    fd2,            216
+        .equ    childfunc,      224
+        .equ    childpid,       228
+
         .text
+        
 .globl shellcode
 shellcode:
         movl    %eax, %ebp      # database
 
-        movl   $4, %eax    # write()
-        movl   $2, %ebx    # stderr
-        movl   %ebp, %ecx  # addr of string
-        movl   $10, %edx   # len
-        int    $0x80
-        movl    $10, %ebx       # step 10 - debug print
-        cmpl    $0, %eax
-        jl      errout
+        #movl   $SYS_write, %eax
+        #movl   $2, %ebx    # stderr
+        #leal   teststr(%ebp), %ecx
+        #movl   $10, %edx   # len
+        #int    $0x80
+        #movl    $10, %ebx       # step 10 - debug print
+        #cmpl    $0, %eax
+        #jl      errout
 
         # fork()
-        movl    $2, %eax
+        movl    $SYS_fork, %eax
         int     $0x80
         cmpl    $0, %eax
         jne     parent
@@ -45,7 +75,7 @@ setpgid:
         jl      setpgid
 
         # setsid()
-        movl    $66, %eax
+        movl    $SYS_setsid, %eax
         int     $0x80
         movl    $73, %ebx       # step 73
         cmpl    $0, %eax
@@ -67,43 +97,40 @@ setpgid:
         # FIXME:        do three open(/dev/null)s, just in case
         
         # socket()
-        movl    $102, %eax      # socketcall
-        movl    $1, %ebx        # socket()
-        movl    %ebp, %ecx      # socket struct
-        addl    $12, %ecx
+        movl    $SYS_socketcall, %eax
+        movl    $SC_socket, %ebx
+        leal    socketstruct(%ebp), %ecx      # socket struct
         int     $0x80
-        movl    %eax, 24(%ebp)
+        movl    %eax, socketfd(%ebp)
         movl    $20, %ebx       # step 20 - socket
         cmpl    $0, %eax
         jl      errout
         # FIXME:        error handling
 
         # connect()
-        movl    $102, %eax      # socketcall()
-        movl    $3, %ebx        # connect()
-        movl    %ebp, %ecx      # socket struct
-        addl    $24, %ecx
+        movl    $SYS_socketcall, %eax
+        movl    $SC_connect, %ebx
+        leal    connectstruct(%ebp), %ecx
         int     $0x80
         movl    $30, %ebx       # step 30 - connect
         cmpl    $0, %eax
         jl      erroutclose
 
         # recvmsg()
-        movl    24(%ebp), %eax  # copy socket fd
-        movl    %eax, 144(%ebp)
-        movl    $102, %eax      # socketcall()
-        movl    $17, %ebx       # recvmsg()
-        movl    %ebp, %ecx      # socket struct
-        addl    $144, %ecx
+        movl    socketfd(%ebp), %eax
+        movl    %eax, recvstruct(%ebp)
+        movl    $SYS_socketcall, %eax
+        movl    $SC_recvmsg, %ebx
+        leal    recvstruct(%ebp), %ecx
         int     $0x80
         movl    $40, %ebx       # step 40 - recvmsg
         cmpl    $1, %eax
         jne      errout
 
         # ioctl(fd, TIOCNOTTY, .) -- not needed. setsid() does it for us
-        #movl    $54, %eax
+        #movl    $SYS_ioctl, %eax
         #movl    $0, %ebx         # fd
-        #movl    $0x5422, %ecx    # TIOCNOTTY
+        #movl    $IOCTL_TIOCNOTTY, %ecx
         #movl    $0, %edx
         #int     $0x80
         #movl    $45, %ebx       # step 45
@@ -111,8 +138,8 @@ setpgid:
         #jl      erroutclose
 
         # dup2(n, 0)
-        movl    $63, %eax
-        movl    208(%ebp), %ebx
+        movl    $SYS_dup2, %eax
+        movl    fd0(%ebp), %ebx
         movl    $0, %ecx
         int     $0x80
         movl    $50, %ebx       # step 50 - dup2(n, 0)
@@ -120,8 +147,8 @@ setpgid:
         jl      erroutclose
 
         # dup2(n, 1)
-        movl    $63, %eax
-        movl    212(%ebp), %ebx
+        movl    $SYS_dup2, %eax
+        movl    fd1(%ebp), %ebx
         movl    $1, %ecx
         int     $0x80
         movl    $60, %ebx       # step 60 - dup2(n, 1)
@@ -129,8 +156,8 @@ setpgid:
         jl      erroutclose
 
         # dup2(n, 2)
-        movl    $63, %eax
-        movl    216(%ebp), %ebx
+        movl    $SYS_dup2, %eax
+        movl    fd2(%ebp), %ebx
         movl    $2, %ecx
         int     $0x80
         movl    $70, %ebx       # step 70 - dup2(n, 2)
@@ -138,9 +165,9 @@ setpgid:
         jl      erroutclose
 
         # ioctl(fd, TIOCTTY, 1)
-        movl    $54, %eax
+        movl    $SYS_ioctl, %eax
         movl    $0, %ebx         # fd
-        movl    $0x540E, %ecx    # TIOCSCTTY
+        movl    $IOCTL_TIOCSCTTY, %ecx
         movl    $1, %edx
         int     $0x80
         movl    $75, %ebx       # step 75
@@ -148,32 +175,32 @@ setpgid:
         jne      erroutclose
 
         # close(socket)
-        movl    $6, %eax
-        movl    24(%ebp), %ebx
+        movl    $SYS_close, %eax
+        movl    socketfd(%ebp), %ebx
         int     $0x80
         movl    $80, %ebx       # step 80
         cmpl    $0, %eax
         jl      erroutclose
 
         # close(fd0)
-        movl    $6, %eax
-        movl    208(%ebp), %ebx
+        movl    $SYS_close, %eax
+        movl    fd0(%ebp), %ebx
         int     $0x80
         movl    $90, %ebx       # step 90
         cmpl    $0, %eax
         jl      erroutclose
 
         # close(fd1)
-        movl    $6, %eax
-        movl    212(%ebp), %ebx
+        movl    $SYS_close, %eax
+        movl    fd1(%ebp), %ebx
         int     $0x80
         movl    $100, %ebx       # step 100
         cmpl    $0, %eax
         jl      erroutclose
 
         # close(fd2)
-        movl    $6, %eax
-        movl    216(%ebp), %ebx
+        movl    $SYS_close, %eax
+        movl    fd2(%ebp), %ebx
         int     $0x80
         movl    $110, %ebx       # step 110
         cmpl    $0, %eax
