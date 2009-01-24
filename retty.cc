@@ -10,7 +10,7 @@
 
 #include "inject.h"
 #include "ErrHandling.h"
-#include "pt2.h"
+#include "injcode.h"
 
 extern "C" char* shellcodeRetty();
 extern "C" char* shellcodeRettyEnd();
