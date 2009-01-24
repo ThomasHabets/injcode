@@ -1,3 +1,4 @@
+CXXFLAGS=-g
 all: injcode
 
 injcode: injcode.o \
@@ -5,7 +6,7 @@ inject.o \
 retty.o \
 shellcode-test-linux-ia32.o \
 shellcode-retty-linux-ia32.o
-	$(CXX) -o $@ $^ -lutil
+	$(CXX) $(CXXFLAGS) -o $@ $^ -lutil
 
 pt:
 	g++ -Wall -W -g -o pt pt.cc shellcode-linux-ia32.S -lutil
