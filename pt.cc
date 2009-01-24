@@ -225,8 +225,20 @@ int
 main(int argc, char **argv)
 {
         int proxyfdm, proxyfds;
+        struct termios orig_tio;
+        struct winsize ws;
+        if (0 > tcgetattr(0, &orig_tio)) {
+                perror("tcgetattr(0, ...)");
+                return 1;
+        }
+        if (0 > ioctl(0, TIOCGWINSZ, &ws)) {
+                perror("ioctl(0, TIOCGWINSZ, ...)");
+                return 1;
+        }
 
-        if (0 > openpty(&proxyfdm, &proxyfds, NULL, NULL, NULL)) {
+
+        if (0 > openpty(&proxyfdm, &proxyfds, NULL, &orig_tio, &ws)) {
+                //if (0 > openpty(&proxyfdm, &proxyfds, NULL, NULL, NULL)) {
                 perror("openpty()");
                 return 1;
         }
