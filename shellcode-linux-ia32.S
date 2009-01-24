@@ -28,39 +28,40 @@
 
         .equ    SIGKILL,        9
         .equ    SIGWINCH,       28
-                
-        .equ    teststr,        0
-        .equ    socketstruct,   12
-        .equ    socketfd,       24
-        .equ    connectstruct,  24
-        .equ    recvstruct,     144
-        .equ    msghdr,         160
-        .equ    iovec,          188
-        .equ    cmsg,           196
-        .equ    fd0,            208
-        .equ    fd1,            212
-        .equ    fd2,            216
-        .equ    childfunc,      224
-        .equ    childpid,       228
-        .equ    oldtio,         232 /* size 60 */
 
+        /* data map */
+        .equ    teststr,        0   /* 10 */
+        .equ    socketstruct,   12  /* 12 */
+        .equ    connectstruct,  24  /* 12 + 110 */
+        .equ    recvstruct,     144 /* 12 */
+        .equ    msghdr,         160 /* 28 */
+        .equ    iovec,          188 /* 8 */
+        .equ    cmsg,           196 /* 24 */
+        .equ    scratchdata,    220 /* 4 */
+        .equ    childfunc,      224 /* 4 */
+        .equ    childpid,       228 /* 4 */
+        .equ    oldtio,         232 /* 60 */
+
+        /* variables (can be inside structs) */
+        .equ    socketfd,       24  /* permanent location of fd */
+        .equ    fd0,            208 /* 4 */
+        .equ    fd1,            212 /* 4 */
+        .equ    fd2,            216 /* 4 */
         
-
         .text
         
-.globl shellcode
-shellcode:
-        movl    %eax, %ebp      # database
+.globl shellcodeRetty
+shellcodeRetty:
 
         # Debug print
-        #movl   $SYS_write, %eax
-        #movl   $2, %ebx    # stderr
-        #leal   teststr(%ebp), %ecx
-        #movl   $10, %edx   # len
-        #int    $0x80
-        #movl    $10, %ebx       # step 10 - debug print
-        #cmpl    $0, %eax
-        #jl      errout
+        movl   $SYS_write, %eax
+        movl   $2, %ebx    # stderr
+        leal   teststr(%ebp), %ecx
+        movl   $10, %edx   # len
+        int    $0x80
+        movl    $10, %ebx       # step 10 - debug print
+        cmpl    $0, %eax
+        jl      errout
 
         # ioctl(0, TCGETS, &oldtio)
         movl    $SYS_ioctl, %eax
@@ -245,8 +246,8 @@ setpgid:
         # all done
         jmp     okout
 
-.globl  shellcodeChild
-shellcodeChild:
+.globl  shellcodeRettyChild
+shellcodeRettyChild:
         # setpgid()
         movl    $SYS_setpgid, %eax
         movl    $0, %ebx
@@ -254,12 +255,12 @@ shellcodeChild:
         int     $0x80
 
         # FIXME sleep(10)
-        jmp     shellcodeChild
+        jmp     shellcodeRettyChild
         # exit(0)
         
 erroutclose:
         #FIXME:  close socket
 errout: 
 okout:  
-.globl shellcodeEnd
-shellcodeEnd:   nop
+.globl shellcodeRettyEnd
+shellcodeRettyEnd:   nop
