@@ -25,7 +25,10 @@
         .equ    TIOCNOTTY,      0x5422
         .equ    TCGETS,         0x5401
         .equ    TCSETS,         0x5402
-        
+
+        .equ    SIGKILL,        9
+        .equ    SIGWINCH,       28
+                
         .equ    teststr,        0
         .equ    socketstruct,   12
         .equ    socketfd,       24
@@ -40,6 +43,7 @@
         .equ    childfunc,      224
         .equ    childpid,       228
         .equ    oldtio,         232 /* size 60 */
+
         
 
         .text
@@ -99,7 +103,7 @@ setpgid:
         # kill()
         movl    $SYS_kill, %eax
         movl    childpid(%ebp), %ebx
-        movl    $9, %ecx
+        movl    $SIGKILL, %ecx
         int     $0x80
                 
         # waitpid()
@@ -198,6 +202,12 @@ setpgid:
         movl    $77, %ebx       # step 77
         cmpl    $0, %eax
         jl      errout
+
+        # kill()
+        movl    $SYS_kill, %eax
+        movl    $0, %ebx
+        movl    $SIGWINCH, %ecx
+        int     $0x80
 
         # close(socket)
         movl    $SYS_close, %eax
