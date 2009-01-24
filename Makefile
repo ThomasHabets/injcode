@@ -1,6 +1,10 @@
 all: injcode
 
-injcode: injcode.o inject.o retty.o shellcode-test-linux-ia32.o shellcode-linux-ia32.o
+injcode: injcode.o \
+inject.o \
+retty.o \
+shellcode-test-linux-ia32.o \
+shellcode-retty-linux-ia32.o
 	$(CXX) -o $@ $^ -lutil
 
 pt:
@@ -9,4 +13,4 @@ b.s:
 	gcc -c -g -Wa,-a,-ad b.c > b.lst
 
 clean:
-	rm -f *.o pt pt2
+	rm -f *.o injcode

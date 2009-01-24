@@ -54,14 +54,14 @@
 shellcodeRetty:
 
         # Debug print
-        movl   $SYS_write, %eax
-        movl   $2, %ebx    # stderr
-        leal   teststr(%ebp), %ecx
-        movl   $10, %edx   # len
-        int    $0x80
-        movl    $10, %ebx       # step 10 - debug print
-        cmpl    $0, %eax
-        jl      errout
+        #movl   $SYS_write, %eax
+        #movl   $2, %ebx    # stderr
+        #leal   teststr(%ebp), %ecx
+        #movl   $10, %edx   # len
+        #int    $0x80
+        #movl    $10, %ebx       # step 10 - debug print
+        #cmpl    $0, %eax
+        #jl      errout
 
         # ioctl(0, TCGETS, &oldtio)
         movl    $SYS_ioctl, %eax
