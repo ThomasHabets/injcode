@@ -23,12 +23,21 @@ void sigint(int a)
         
 }
 
+void
+sigwinch(int unused)
+{
+        printf("Sigwinch!\n");
+}
+
 
 int
 main()
 {
         int n = 0, t;
         int pid;
+
+        signal(SIGWINCH, sigwinch);
+
         if (0) {
                 doit();
         }
@@ -62,7 +71,17 @@ main()
                        strerror(errno));
         }
         for(;;) {
-                printf("Loop pid=%d %d\n", getpid(), n++);
+                struct winsize w;
+
+                if (-1 == ioctl(0, TIOCGWINSZ, &w)) {
+                        fprintf(stderr, "ioctl(TIOCGWINSZ) fail: %s\n",
+                                strerror(errno));
+                }
+
+                printf("Loop pid=%d (winsz: %hdx%hd) %d\n",
+                       getpid(),
+                       w.ws_col, w.ws_row,
+                       n++);
                 //fprintf(stderr, "> lala\n");
                 if (1) {
                         sleep(1);

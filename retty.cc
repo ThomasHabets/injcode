@@ -23,6 +23,24 @@ static int proxyfdm, proxyfds;
 static pid_t childpid;
 static struct termios orig_tio;
 
+void
+Retty::sigwinch(int unused)
+{
+        struct winsize ws;
+        if (0 > ioctl(0, TIOCGWINSZ, &ws)) {
+                throw ErrHandling::ErrSys("Retty::sigwinch",
+                                          "ioctl",
+                                          "TIOCGWINSZ");
+                perror("ioctl(0, TIOCGWINSZ, ...)");
+        }
+        if (0 > ioctl(proxyfdm, TIOCSWINSZ, &ws)) {
+                throw ErrHandling::ErrSys("Retty::sigwinch",
+                                          "ioctl",
+                                          "TIOCSWINSZ");
+                perror("ioctl(0, TIOCSWINSZ, ...)");
+        }
+}
+
 int
 Retty::send_fds(int sd, int proxyfd)
 {
@@ -150,7 +168,6 @@ Retty::setupPty()
                                           "openpty",
                                           "");
         }
-        
         childpid = fork();
         if (!childpid) {
                 close(proxyfdm);
@@ -158,6 +175,7 @@ Retty::setupPty()
                 exit(0);
         }
         close(proxyfds);
+        signal(SIGWINCH, sigwinch);
 
         // FIXME: communicate with child so we know when it's ready.
         //        don't just sleep() arbitrarily.

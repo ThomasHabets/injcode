@@ -23,6 +23,7 @@ class Retty: public InjMod {
         std::string readFd(int fd);
         void setRawTerminal(int fd);
         void setupPty();
+        static void sigwinch(int);
 public:
         Retty(Inject&);
         void run();
