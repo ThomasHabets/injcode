@@ -9,7 +9,7 @@
 options_t options;
 
 const char* defaultModule = "test";
-const float version = 0.00;
+const float version = 0.10;
 
 static void
 injcode()
