@@ -31,13 +31,15 @@ Retty::sigwinch(int unused)
                 throw ErrHandling::ErrSys("Retty::sigwinch",
                                           "ioctl",
                                           "TIOCGWINSZ");
-                perror("ioctl(0, TIOCGWINSZ, ...)");
+                fprintf(stderr, "%s: ioctl(0, TIOCGWINSZ, ...): %s\n",
+                        options.argv0, strerror(errno));
         }
         if (0 > ioctl(proxyfdm, TIOCSWINSZ, &ws)) {
                 throw ErrHandling::ErrSys("Retty::sigwinch",
                                           "ioctl",
                                           "TIOCSWINSZ");
-                perror("ioctl(0, TIOCSWINSZ, ...)");
+                fprintf(stderr, "%s: ioctl(0, TIOCSWINSZ, ...): %s\n",
+                        options.argv0, strerror(errno));
         }
 }
 
@@ -86,10 +88,12 @@ Retty::child(int proxyfd)
                                               "\0init_console" };
         if (bind(server_socket, (struct sockaddr *) &server_address,
                  sizeof server_address)) {
-                fprintf(stderr, "RettyChild> bind() error %s\n", strerror(errno));
+                fprintf(stderr, "RettyChild> bind() error %s\n",
+                        strerror(errno));
         }
         if (listen(server_socket, 1)) {
-                fprintf(stderr, "RettyChild> listen() error %s\n", strerror(errno));
+                fprintf(stderr, "RettyChild> listen() error %s\n",
+                        strerror(errno));
         }
         
         struct sockaddr_un client_address;
@@ -138,11 +142,14 @@ Retty::setRawTerminal(int fd)
 {
         struct termios tio;
         if (tcgetattr(fd, &tio)) {
-                fprintf(stderr, "---------- tcgetattr!\n");
+                fprintf(stderr, "%s: tcgetattr(): %s\n", options.argv0,
+                        strerror(errno));
+                return;
         }
         cfmakeraw(&tio);
         if (tcsetattr(fd, TCSANOW, &tio)) {
-                fprintf(stderr, "---------- tcsetattr!\n");
+                fprintf(stderr, "%s: tcsetattr(): %s\n", options.argv0,
+                        strerror(errno));
         }
 }
 
