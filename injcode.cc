@@ -9,8 +9,9 @@
 options_t options;
 
 const char* defaultModule = "test";
+const float version = 0.00;
 
-void
+static void
 injcode()
 {
         Inject injector(options.targetpid);
@@ -31,11 +32,12 @@ injcode()
 static
 void usage(int err)
 {
-        printf("Usage: %s [ -hv ] [ -m <payload> ]\n"
+        printf("Injcode %.2f, by Thomas Habets <thomas@habets.pp.se>\n"
+               "Usage: %s [ -hv ] [ -m <payload> ]\n"
                "\t-h            Show this help text\n"
                "\t-m <payload>  test/retty.  Default: %s\n"
-               "\t-v            Help\n"
-               , options.argv0, defaultModule);
+               "\t-v            Increase verbosity.\n"
+               ,version, options.argv0, defaultModule);
         exit(err);
 }
 
