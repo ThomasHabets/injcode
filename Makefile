@@ -6,6 +6,7 @@ ECHO=echo
 SED=sed
 GZIP=gzip
 TAR=tar
+GPG=gpg
 
 all: injcode
 
@@ -22,6 +23,7 @@ injcode-%.tar.gz:
 		--prefix=$(shell $(ECHO) $@ | $(SED) 's/\.tar\.gz//')/ \
 		injcode-$(shell $(ECHO) $@|$(SED) 's/.*-//'|$(SED) 's/\.tar\.gz//') \
 		| $(TAR) --delete injcode-$(shell $(ECHO) $@|$(SED) 's/.*-//'|$(SED) 's/\.tar\.gz//')/.be  | $(GZIP) -9 > $@
+	$(GPG) -b -a $@
 
 pt:
 	g++ -Wall -W -g -o pt pt.cc shellcode-linux-ia32.S -lutil
