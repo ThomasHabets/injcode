@@ -7,6 +7,11 @@
 
 #include "inject.h"
 
+#ifndef WIFCONTINUED
+#define WIFCONTINUED(a) 0
+#endif
+
+
 Inject::Inject(pid_t pid)
         :pid(pid),attached(false)
 {
