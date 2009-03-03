@@ -19,6 +19,8 @@ injcode()
                 options.module.reset(new Retty(injector));
         } else if (options.moduleName == "test") {
                 options.module.reset(new TestModule(injector));
+        } else if (options.moduleName == "close") {
+                options.module.reset(new CloseModule(injector));
         }
         injector.run();
         injector.dumpregs(options.verbose < 2);

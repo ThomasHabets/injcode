@@ -17,6 +17,11 @@ public:
         TestModule(Inject&);
         void run() {};
 };
+class CloseModule: public InjMod {
+public:
+        CloseModule(Inject&);
+        void run() {};
+};
 class Retty: public InjMod {
         int send_fds(int sd, int proxyfd);
         void child(int proxyfd);
