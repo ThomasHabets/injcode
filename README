@@ -29,17 +29,30 @@ Doing retty is quite involved. See FIXME for the full story.
 
 Running
 =======
-Start irssi in one terminal.
 
-Run in another terminal:
+Example 1: move irssi from one terminal to another
+--------------------------------------------------
+Maybe move it into a screen.
+
+First start irssi in one terminal.
+
+Run injcode in another terminal:
   $ injcode -m retty <pid of irssi>
 
 Irssi should now be moved to the second terminal, including having a new 
 controlling terminal.
+
+Example 2: redirect stdout of a running program into a file
+-----------------------------------------------------------
+  $ injcode -m dup2 \
+    -ofd=1 \
+    -oflags=O_CREAT,O_WRONLY,O_TRUNC \
+    -ofilename=logfile.txt
 
 Bugs
 ====
 See bug list/wishist using BugsEverywhere.
 
 
-This file is written in reStructuredText.
+This file is written in
+`reStructuredText <http://docutils.sourceforge.net/docs/user/rst>`_
