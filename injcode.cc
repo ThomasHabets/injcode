@@ -60,7 +60,7 @@ void usage(int err)
         printf("Injcode %.2f, by Thomas Habets <thomas@habets.pp.se>\n"
                "Usage: %s [ -hv ] [ -m <payload> ]\n"
                "\t-h            Show this help text\n"
-               "\t-m <payload>  test/retty/close.  Default: %s\n"
+               "\t-m <payload>  test/retty/close/dup2.  Default: %s\n"
                "\t-o<opt>=<val> Module-specific parameters\n"
                "\t-v            Increase verbosity.\n"
                "\n"
@@ -68,7 +68,9 @@ void usage(int err)
                "\t-ofd=<num>    File descriptor to close\n"
                "\n"
                "    Dup2 module\n"
-               "\t-ofd=<num>    File descriptor to overwrite\n"
+               "\t-ofd=<num>         File descriptor to overwrite\n"
+               "\t-ofilename=<file>  File to open()\n"
+               "\t-oflags=<num>      open() flags\n"
                ,version, options.argv0, defaultModule);
         exit(err);
 }
