@@ -1,3 +1,4 @@
+// injcode/testmodule.cc
 #include "inject.h"
 #include "ErrHandling.h"
 #include "injcode.h"
@@ -5,6 +6,9 @@
 extern "C" char* shellcodeTest();
 extern "C" char* shellcodeTestEnd();
 
+/**
+ *
+ */
 TestModule::TestModule(Inject &injector)
         :InjMod(injector)
 {

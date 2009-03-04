@@ -1,0 +1,19 @@
+=================
+ Injcode hacking
+=================
+:Author: Thomas Habets
+:Contact: thomas@habets.pp.se
+:Copyright: GPL
+
+
+Adding new shellcode
+====================
+* Write shellcode-<name>-<os>-<arch>.S
+* Write <name>module.cc
+* Add both to Makefile
+* Add to injcode() in injcode.cc
+* Add class to injcode.h
+
+Porting shellcode to new architechture
+======================================
+FIXME: will fill this in.

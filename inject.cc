@@ -7,8 +7,8 @@
 
 #include "inject.h"
 
-Inject::Inject(pid_t pid)
-        :pid(pid),attached(false)
+Inject::Inject(pid_t pid, int verbose, const char *argv0)
+        :pid(pid),attached(false),verbose(verbose),argv0(argv0)
 {
 }
 
@@ -155,13 +155,13 @@ Inject::run()
                 }
                 int status;
                 waitpid(pid, &status, 0);
-                if (0 || last != time(0)) {
+                if (verbose && last != time(0)) {
                         last = time(0);
                         printf("waitpid status: %d %d %d %d\n",
-                                WIFEXITED(status),
-                                WIFSIGNALED(status),
-                                WIFSTOPPED(status),
-                                WIFCONTINUED(status));
+                               WIFEXITED(status),
+                               WIFSIGNALED(status),
+                               WIFSTOPPED(status),
+                               WIFCONTINUED(status));
                         if (WIFSTOPPED(status)) {
                                 // FIXME: save signal and deliver later
                                 printf("Stopping signal: %d\n",

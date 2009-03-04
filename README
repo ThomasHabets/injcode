@@ -1,0 +1,23 @@
+=========
+ Injcode
+=========
+:Author: Thomas Habets
+:Contact: thomas@habets.pp.se
+:Copyright: GPL
+
+
+Install
+=======
+Just type "make", and then put the binary (injcode) wherever you like.
+
+How it works
+============
+FIXME: will fill this in.
+
+Running
+=======
+FIXME: will fill this in.
+
+Bugs
+====
+See bug list with BugsEverywhere.

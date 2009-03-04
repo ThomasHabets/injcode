@@ -1,3 +1,8 @@
+#if defined(__linux__) && defined(__i386)
+/** injcode/shellcode-close-linux-ia32.S
+ *   
+ *  Copyright(c) Thomas Habets 2009
+ */
 #include "asm-constants.h"
 
 .globl shellcodeClose
@@ -8,3 +13,4 @@ shellcodeClose:
         xorl    %eax, %eax
 .globl shellcodeCloseEnd
 shellcodeCloseEnd:   nop
+#endif

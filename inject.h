@@ -17,6 +17,9 @@ public:
 protected:
         int pid;
         bool attached;
+        int verbose;
+        std::string argv0;
+
         bool injected;
         ptr_t codebase;
         ptr_t database;
@@ -43,7 +46,7 @@ public:
                         :ErrSys(func, "ptrace", msg), req(req) { }
         };
 
-        Inject(pid_t pid);
+        Inject(pid_t pid, int verbose, const char *argv0);
         ~Inject() { detach(); }
 
         void attach();

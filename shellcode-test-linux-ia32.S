@@ -1,3 +1,8 @@
+#if defined(__linux__) && defined(__i386)
+/** injcode/shellcode-test-linux-ia32.S
+ *   
+ *  Copyright(c) Thomas Habets 2009
+ */
 #include "asm-constants.h"
 
         .equ    teststr,        0
@@ -12,3 +17,4 @@ shellcodeTest:
         xorl    %eax, %eax
 .globl shellcodeTestEnd
 shellcodeTestEnd:   nop
+#endif

@@ -15,8 +15,10 @@ inject.o \
 retty.o \
 testmodule.o \
 closemodule.o \
+dup2module.o \
 shellcode-test-linux-ia32.o \
 shellcode-close-linux-ia32.o \
+shellcode-dup2-linux-ia32.o \
 shellcode-retty-linux-ia32.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ -lutil
 
