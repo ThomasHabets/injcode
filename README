@@ -12,12 +12,34 @@ Just type "make", and then put the binary (injcode) wherever you like.
 
 How it works
 ============
-FIXME: will fill this in.
+Injcode attaches to the target process using ptrace(). It then copies code
+and data into the memory space of the process and runs that. Then it cleans
+up as if it was never there.
+
+It places the code and data in the current code and data page, respectively.
+This ensures that no stack execution protection blocks it.
+
+The code injected can be anything, but currently these are implemented:
+- test     Prints a message to stdout in the context of the target process.
+- close    Close any file descriptor. (see /proc/<pid>/fd)
+- dup2     Overwrite any fd with a newly opened file.
+- retty    Move a program from another tty to this one.
+
+Doing retty is quite involved. See FIXME for the full story.
 
 Running
 =======
-FIXME: will fill this in.
+Start irssi in one terminal.
+
+Run in another terminal:
+  $ injcode -m retty <pid of irssi>
+
+Irssi should now be moved to the second terminal, including having a new 
+controlling terminal.
 
 Bugs
 ====
-See bug list with BugsEverywhere.
+See bug list/wishist using BugsEverywhere.
+
+
+This file is written in reStructuredText.

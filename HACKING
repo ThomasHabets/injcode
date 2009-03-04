@@ -16,4 +16,5 @@ Adding new shellcode
 
 Porting shellcode to new architechture
 ======================================
-FIXME: will fill this in.
+* Rewrite all .S files
+* Add them to Makefile
