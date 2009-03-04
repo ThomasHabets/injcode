@@ -13,16 +13,22 @@ shellcodeDup2:
         movl    4(%ebp), %ecx
         movl    8(%ebp), %edx
         int     $0x80
+        cmpl    $0, %eax
+        jl      .Lerrout_open
+        movl    %eax, %ebx
 
         # dup2()
-        movl    %eax, %ebx
         movl    $SYS_dup2, %eax
         movl    (%ebp), %ecx
         int     $0x80
+        cmpl    $0, %eax
+        jl      .Lerrout_dup2
 
         # close()
         movl    $SYS_close, %eax
         int     $0x80
+        cmpl    $0, %eax
+        jl      .Lerrout_close
 
         # all done
         xorl    %eax, %eax

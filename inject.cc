@@ -185,6 +185,10 @@ Inject::run()
                         perror("getregs");
                 }
         } while(regs.eip != (long)(codeBase()  + pageSize()));
+        if (regs.eax) {
+                printf("Shellcode returned non-null: %d\n", regs.eax);
+                dumpregs(&regs);
+        }
 }
 
 void
