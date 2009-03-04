@@ -45,9 +45,9 @@ controlling terminal.
 Example 2: redirect stdout of a running program into a file
 -----------------------------------------------------------
   $ injcode -m dup2 \
-    -ofd=1 \
-    -oflags=O_CREAT,O_WRONLY,O_TRUNC \
-    -ofilename=logfile.txt
+  -ofd=1 \
+  -oflags=O_CREAT,O_WRONLY,O_TRUNC \
+  -ofilename=logfile.txt <pid of program>
 
 Bugs
 ====
