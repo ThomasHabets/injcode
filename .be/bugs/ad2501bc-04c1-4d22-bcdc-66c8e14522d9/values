@@ -1,0 +1,35 @@
+
+
+
+creator=Thomas Habets <thomas@habets.pp.se>
+
+
+
+
+
+
+severity=minor
+
+
+
+
+
+
+status=open
+
+
+
+
+
+
+summary=EINTR handling in shellcode
+
+
+
+
+
+
+time=Wed, 04 Mar 2009 14:55:04 +0000
+
+
+

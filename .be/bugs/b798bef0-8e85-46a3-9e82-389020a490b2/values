@@ -1,0 +1,35 @@
+
+
+
+creator=Thomas Habets <thomas@habets.pp.se>
+
+
+
+
+
+
+severity=minor
+
+
+
+
+
+
+status=open
+
+
+
+
+
+
+summary=move terminal-code (tcgetattr) to retty module
+
+
+
+
+
+
+time=Wed, 04 Mar 2009 10:14:37 +0000
+
+
+
