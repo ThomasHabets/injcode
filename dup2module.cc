@@ -67,9 +67,9 @@ Dup2Module::Dup2Module(Inject &injector)
         int *fd, *flags;
         fd = &((int*)data)[0];
         flags = &((int*)data)[1];
-        *fd = strtoul(options.parameters["fd"].c_str(), NULL, NULL);
+        *fd = strtoul(options.parameters["fd"].c_str(), NULL, 0);
 
-        std::vector<std::string> fl = strSplit(options.parameters["flags"],",");
+        std::vector<std::string> fl=strSplit(options.parameters["flags"],",");
         *flags = 0;
         for (std::vector<std::string>::const_iterator itr = fl.begin();
              itr != fl.end();
@@ -91,8 +91,7 @@ Dup2Module::Dup2Module(Inject &injector)
         mode_t *mode = (mode_t*)&((int*)data)[2];
         *mode = 0644; // default mode
         if (options.parameters.count("mode")) {
-                *mode = strtoul(options.parameters["mode"].c_str(),
-                                NULL, NULL);
+                *mode = strtoul(options.parameters["mode"].c_str(), NULL, 0);
         }
         memcpy(data + sizeof(int) + sizeof(int) + sizeof(mode_t),
                options.parameters["filename"].data(),

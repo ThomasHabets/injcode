@@ -35,7 +35,7 @@ CloseModule::CloseModule(Inject &injector)
         code[injector.pageSize()-1] = 0xcc;
 
         // data setup
-        *((int*)data) = strtoul(options.parameters["fd"].c_str(), NULL, NULL);
+        *((int*)data) = strtoul(options.parameters["fd"].c_str(), NULL, 0);
 
         // code setup
         size_t s = (Inject::ptr_t)shellcodeCloseEnd

@@ -14,7 +14,8 @@
 #include "ErrHandling.h"
 #include "injcode.h"
 
-#define UNUSED(x) x __attribute__ ((unused))
+//#define UNUSED(x) x __attribute__ ((unused))
+#define UNUSED(x) x
 
 extern "C" char* shellcodeRetty();
 extern "C" char* shellcodeRettyEnd();
