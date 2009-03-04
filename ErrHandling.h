@@ -22,6 +22,7 @@ public:
                 }
                 virtual ~ErrBase() throw() {}
                 const char *what() const throw() { return huh.c_str(); };
+                const char *whatMsg() const throw() { return msg.c_str(); };
         };
         class ErrMalformed: public ErrBase {
         public:

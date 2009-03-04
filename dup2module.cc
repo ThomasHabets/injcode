@@ -20,7 +20,7 @@ strSplit(const std::string str, std::string delim)
 {
         std::vector<std::string> ret;
         std::string s(str);
-        int n;
+        size_t n;
         while ((n = s.find_first_of(delim)) != s.npos) {
                 if (n > 0) {
                         ret.push_back(s.substr(0, n));
@@ -50,10 +50,12 @@ Dup2Module::Dup2Module(Inject &injector)
 
         // sanity check input
         if (!options.parameters.count("fd")
-            || !options.parameters.count("flags")) {
+            || !options.parameters.count("flags")
+            || !options.parameters.count("filename")) {
                 throw ErrMalformed("Dup2Module::Dup2Module()",
-                                   "Dup2 module requires option -ofd=<num>"
-                                   " and -oflags=<flags>");
+                                   "dup2 requires options fd, "
+                                   "flags & filename");
+
         }
 
         // init
@@ -74,12 +76,17 @@ Dup2Module::Dup2Module(Inject &injector)
              ++itr) {
                 if (*itr == "O_RDONLY")         { *flags |= O_RDONLY;      }
                 else if (*itr == "O_WRONLY")    { *flags |= O_WRONLY;      }
+                else if (*itr == "O_RDWR")      { *flags |= O_RDWR;        }
                 else if (*itr == "O_CREAT")     { *flags |= O_CREAT;       }
                 else if (*itr == "O_APPEND")    { *flags |= O_APPEND;      }
                 else if (*itr == "O_DIRECTORY") { *flags |= O_DIRECTORY;   }
                 else if (*itr == "O_EXCL")      { *flags |= O_EXCL;        }
                 else if (*itr == "O_NONBLOCK")  { *flags |= O_NONBLOCK;    }
                 else if (*itr == "O_TRUNC")     { *flags |= O_TRUNC;       }
+                else {
+                        throw ErrMalformed("Dup2Module::Dup2Module()",
+                                           "Invalid flag " + *itr);
+                }
         }
         mode_t *mode = (mode_t*)&((int*)data)[2];
         *mode = 0644; // default mode

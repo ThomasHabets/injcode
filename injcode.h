@@ -3,6 +3,9 @@
 #include <vector>
 #include <map>
 
+#include <termios.h>
+#include <unistd.h>
+
 class InjMod: public ErrHandling {
 protected:
         Inject &injector;
@@ -30,6 +33,7 @@ public:
         void run() {};
 };
 class Retty: public InjMod {
+        struct termios orig_tio;
         int send_fds(int sd, int proxyfd);
         void child(int proxyfd);
         std::string readFd(int fd);
@@ -38,6 +42,7 @@ class Retty: public InjMod {
         static void sigwinch(int);
 public:
         Retty(Inject&);
+        ~Retty();
         void run();
 };
 

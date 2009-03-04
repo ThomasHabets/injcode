@@ -14,6 +14,8 @@
 #include "ErrHandling.h"
 #include "injcode.h"
 
+#define UNUSED(x) x __attribute__ ((unused))
+
 extern "C" char* shellcodeRetty();
 extern "C" char* shellcodeRettyEnd();
 extern "C" char* shellcodeRettyChild();
@@ -22,10 +24,9 @@ extern options_t options;
 
 static int proxyfdm, proxyfds;
 static pid_t childpid;
-static struct termios orig_tio;
 
 void
-Retty::sigwinch(int unused)
+Retty::sigwinch(UNUSED(int x))
 {
         struct winsize ws;
         if (0 > ioctl(0, TIOCGWINSZ, &ws)) {
@@ -190,9 +191,22 @@ Retty::setupPty()
         sleep(1);
 }
 
+Retty::~Retty()
+{
+        if (0 > tcsetattr(0, TCSANOW, &orig_tio)) {
+                fprintf(stderr, "%s: tcsetattr(0, ...)", options.argv0);
+        }
+}
+
 Retty::Retty(Inject &injector)
         :InjMod(injector)
 {
+        // save for later. Will use this to reset right before exiting
+        if (0 > tcgetattr(0, &orig_tio)) {
+                throw ErrSys("Retty::Retty()",
+                             "tcgetattr(0, ...)");
+        }
+
         setupPty();
 
         // background it

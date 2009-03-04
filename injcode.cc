@@ -11,6 +11,22 @@ options_t options;
 const char* defaultModule = "test";
 const float version = 0.10;
 
+class ErrModule: public std::exception {
+protected:
+        const std::string func;
+        const std::string msg;
+        std::string huh;
+public:
+        ErrModule(const std::string &func,
+                const std::string &msg)
+                :func(func),msg(msg)
+        {
+                huh = func + ": " + msg;
+        }
+        virtual ~ErrModule() throw() {}
+        const char *what() const throw() { return huh.c_str(); };
+};
+
 static void
 injcode()
 {
@@ -23,9 +39,14 @@ injcode()
                 options.module.reset(new CloseModule(injector));
         } else if (options.moduleName == "dup2") {
                 options.module.reset(new Dup2Module(injector));
+        } else {
+                throw ErrModule("injcode",
+                                std::string("Unknown module name: '")
+                                + options.moduleName
+                                + std::string("'\n"));
         }
         injector.run();
-        injector.dumpregs(options.verbose < 2);
+        //injector.dumpregs(options.verbose < 2);
         injector.detach();
         options.module->run();
 }
@@ -45,6 +66,9 @@ void usage(int err)
                "\n"
                "    Close module\n"
                "\t-ofd=<num>    File descriptor to close\n"
+               "\n"
+               "    Dup2 module\n"
+               "\t-ofd=<num>    File descriptor to overwrite\n"
                ,version, options.argv0, defaultModule);
         exit(err);
 }
@@ -57,13 +81,6 @@ main(int argc, char **argv)
         options.argv0 = argv[0];
         options.moduleName = defaultModule;
         
-        // save for later. Will use this to reset right before exiting
-        struct termios orig_tio;
-        if (0 > tcgetattr(0, &orig_tio)) {
-                perror("tcgetattr(0, ...)");
-                return 1;
-        }
-
         // option parsing
         for(int c = 0; c != -1;) {
                 switch((c = getopt(argc, argv, "hm:o:v"))) {
@@ -73,14 +90,6 @@ main(int argc, char **argv)
                         usage(0);
                         break;
                 case 'm':
-                        if (optarg == "test"
-                            || optarg == "retty") {
-                                fprintf(stderr,
-                                        "%s: Unknown module name: '%s'\n",
-                                        optarg);
-                                usage(1);
-                        }
-                                
                         options.moduleName = optarg;
                         break;
                 case 'o': {
@@ -108,15 +117,16 @@ main(int argc, char **argv)
 
         try {
                 injcode();
+        } catch(const Inject::ErrMalformed &e) {
+                fprintf(stderr, "%s: %s\n", argv[0], e.whatMsg());
+                usage(1);
+        } catch(const Inject::ErrSysPtrace &e) {
+                fprintf(stderr, "%s: Unable to connect to pid: %s\n",
+                        argv[0], e.what());
         } catch(const std::exception &e) {
                 fprintf(stderr, "%s: Error: %s\n", argv[0], e.what());
         } catch(...) {
                 fprintf(stderr, "%s: An error occured\n", argv[0]);
                 throw;
-        }
-
-        if (0 > tcsetattr(0, TCSANOW, &orig_tio)) {
-                perror("tcsetattr(0, ...)");
-                return 1;
         }
 }

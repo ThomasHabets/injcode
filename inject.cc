@@ -12,6 +12,17 @@ Inject::Inject(pid_t pid, int verbose, const char *argv0)
 {
 }
 
+Inject::~Inject()
+{
+        try {
+                detach();
+        } catch(...) {
+                // FIXME: the code should handle this better than just
+                // ignoring failure
+        }
+}
+
+
 void
 Inject::detach()
 {
@@ -31,21 +42,23 @@ Inject::attach()
         if (!attached) {
                 attached = true;
                 if (ptrace(PTRACE_ATTACH, pid, NULL, NULL)) {
+                        attached = false;
                         throw ErrSysPtrace("Inject::attach",
                                            PTRACE_ATTACH,
                                            "attach");
                 }
-                pagesize = 4096; // FIXME: find this
 
+                pagesize = 4096; // FIXME: find this
+                
                 // FIXME: needed?
                 if (0 > kill(pid, SIGCONT)) {
-                        throw ErrSys("Inject::detach", "kill");
+                        throw ErrSys("Inject::attach", "kill");
                 }
-
+                
                 if (0 > waitpid(pid, NULL, 0)) {
-                        throw ErrSys("Inject::detach", "waitpid");
+                        throw ErrSys("Inject::attach", "waitpid");
                 }
-
+                
                 if (ptrace(PTRACE_GETREGS, pid, NULL, &oldregs)) {
                         throw ErrSysPtrace("Inject::attach",
                                            PTRACE_GETREGS,
@@ -55,7 +68,6 @@ Inject::attach()
                 oldcodepage.resize(pagesize);
                 peek(&olddatapage[0], dataBase(), pagesize);
                 peek(&oldcodepage[0], codeBase(), pagesize);
-
         }
 }
 
@@ -65,7 +77,6 @@ Inject::peekpoke(const char *data, unsigned long addr, size_t len, bool poke)
 {
         unsigned long them;
         const char *us;
-        int err;
 
         us = data;
         them = addr;
@@ -174,7 +185,7 @@ Inject::run()
                         }
                         //dumpregs(&newregs);
                         if (0) {
-                                printf("%p .. %p .. %p\n",
+                                printf("%lx .. %p .. %lx\n",
                                        codeBase(),
                                        (void*)regs.eip,
                                        codeBase() + pageSize());
@@ -186,8 +197,8 @@ Inject::run()
                 }
         } while(regs.eip != (long)(codeBase()  + pageSize()));
         if (regs.eax) {
-                printf("Shellcode returned non-null: %d\n", regs.eax);
-                dumpregs(&regs);
+                printf("Shellcode returned non-null: %ld\n", regs.eax);
+                dumpregs();
         }
 }
 
@@ -218,10 +229,10 @@ Inject::dumpregs(bool onlyIfEAX)
                 return;
         }
         printf("----------------------------\n");
-        printf("%%eip : 0x%.8lx  %d\n", regs.eip);
-        printf("%%eax : 0x%.8lx  %d %s\n", regs.eax, regs.eax,
+        printf("%%eip : 0x%.8lx\n", regs.eip);
+        printf("%%eax : 0x%.8lx  %ld %s\n", regs.eax, regs.eax,
                strerror(-regs.eax));
-        printf("%%ebx : 0x%.8lx  %d\n", regs.ebx, regs.ebx);
+        printf("%%ebx : 0x%.8lx  %ld\n", regs.ebx, regs.ebx);
         printf("%%ecx : 0x%.8lx\n", regs.ecx);
         printf("%%edx : 0x%.8lx\n", regs.edx);
         printf("%%esi : 0x%.8lx\n", regs.esi);

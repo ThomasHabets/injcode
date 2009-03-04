@@ -47,7 +47,7 @@ public:
         };
 
         Inject(pid_t pid, int verbose, const char *argv0);
-        ~Inject() { detach(); }
+        ~Inject();
 
         void attach();
         void detach();
@@ -56,7 +56,7 @@ public:
         void run();
         void dumpregs(bool onlyIfEAX=false);
         int pageSize() { attach(); return pagesize; }
-        int wordSize() { return sizeof(ptr_t); }
+        size_t wordSize() { return sizeof(ptr_t); }
 
         void inject(void *code, void *data);
         void uninject();

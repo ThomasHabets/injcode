@@ -1,6 +1,6 @@
 # injcode/Makefile
 #
-CXXFLAGS=-g
+CXXFLAGS=-g -W -Wall -pipe -O2
 GIT=git
 ECHO=echo
 SED=sed
