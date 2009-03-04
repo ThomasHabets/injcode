@@ -7,10 +7,15 @@
 
 #include "inject.h"
 
+#ifndef WIFCONTINUED
+#define WIFCONTINUED(a) 0
+#endif
+
 Inject::Inject(pid_t pid, int verbose, const char *argv0)
         :pid(pid),attached(false),verbose(verbose),argv0(argv0)
 {
 }
+
 
 Inject::~Inject()
 {
