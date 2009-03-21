@@ -162,19 +162,18 @@ Retty::setupPty()
 {
         struct winsize ws;
         if (0 > tcgetattr(0, &orig_tio)) {
-                throw ErrHandling::ErrSys("retty setupPty",
+                throw ErrHandling::ErrSys("retty::setupPty",
                                           "tcgetattr",
                                           "");
         }
         if (0 > ioctl(0, TIOCGWINSZ, &ws)) {
-                throw ErrHandling::ErrSys("retty setupPty",
+                throw ErrHandling::ErrSys("retty::setupPty",
                                           "ioctl",
-                                          "");
-                perror("ioctl(0, TIOCGWINSZ, ...)");
+                                          "TIOCGWINSZ");
         }
 
         if (0 > openpty(&proxyfdm, &proxyfds, NULL, &orig_tio, &ws)) {
-                throw ErrHandling::ErrSys("retty setupPty",
+                throw ErrHandling::ErrSys("retty::setupPty",
                                           "openpty",
                                           "");
         }
