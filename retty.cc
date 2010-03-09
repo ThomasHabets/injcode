@@ -1,4 +1,5 @@
 // injcode/retty.cc
+#include <cstdio>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <termios.h>

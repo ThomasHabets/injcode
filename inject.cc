@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <sys/types.h>
 #include <signal.h>
 #include <sys/ptrace.h>
