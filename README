@@ -25,7 +25,9 @@ The code injected can be anything, but currently these are implemented:
 - dup2     Overwrite any fd with a newly opened file.
 - retty    Move a program from another tty to this one.
 
-Doing retty is quite involved. See FIXME for the full story.
+Doing retty is quite involved. See:
+  http://blog.habets.pp.se/2009/03/Moving-a-process-to-another-terminal
+for the full story.
 
 Running
 =======
