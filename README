@@ -5,6 +5,7 @@
 :Contact: thomas@habets.pp.se
 :Copyright: GPL
 
+Only supports x86 Linux, not 64bit.
 
 Install
 =======
